@@ -17,7 +17,7 @@ To run this program from the source code:
 
 - Download and extract the Source Code file from the most current release.
 - Make sure that Python3 and the python package PySide6 are installed on your system.
-- Run the following command from your terminal:  `python AcademicScheduler.py` or possibly `python3 AcademicScheduler.py`
+- Run the following command from your terminal:  `python ImageAnnotator.py` or possibly `python3 ImageAnnotator.py`
 
 **Notes:** 
 - For Linux and MacOS users, depending on how your system is set up, you may be able to simply double-click the AcademicScheduler.py file from your file browser instead of running this from the terminal.  
