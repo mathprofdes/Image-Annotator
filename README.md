@@ -27,7 +27,7 @@ To run this program from the source code:
 
 **Program Description**
 
-The Image Annotator is a program for incorporating simple annotations on an image. 
+The Image Annotator is a program for incorporating simple annotations on an image.  Once a base image is loaded into the program the user can then select to add simple annotations to the image. The program is useful for creating images to be incorporated into course notes, presentations, and other documents.
 
 ---
 
