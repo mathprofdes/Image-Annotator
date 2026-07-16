@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SVG Formula Renderer</title>
+
+  <!-- Load MathJax -->
+  <script>
+    window.MathJax = {
+      loader: {
+        load: [
+          '[tex]/all-packages'
+        ]
+      },
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script>
+    localStorage.removeItem("MathJax-Menu-Settings");
+  </script>  
+  <script defer src="./MathJax-3.2.2/es5/tex-mml-svg.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 5px 20px 20px 20px; }
+    textarea { width: 100%; height: 150px; font-size: 16px; }
+    #output { margin-top: 20px; border: 1px solid #ccc; padding: 20px; min-height: 100px; }
+    select { margin-bottom: 10px; font-size: 16px; }
+    button { margin: 5px; }
+  </style>
+</head>
+<body>
+
+<h1>SVG Formula Renderer</h1>
+
+<span style="margin-right: 30px;">
+  <label for="engineSelect">Content Engine:</label>
+  <select id="engineSelect">
+    <option value="mathjax-inline">MathJax-inline</option>
+    <option value="mathjax-display">MathJax-display</option>
+  </select>
+</span>
+
+<button id="saveSvgButton">Save as SVG</button>
+
+<textarea id="latexInput" placeholder="Enter your LaTeX formula here"></textarea>
+
+<div id="output">
+  Rendered SVG output will appear here
+</div>
+
+<script>
+  // Bind input field and dropdown menus
+  function initRender() {
+    const input = document.getElementById('latexInput');
+    const output = document.getElementById('output');
+    const engineSelect = document.getElementById('engineSelect');
+
+    function render() {
+      const engine = engineSelect.value;
+      const latex = input.value;
+
+      if (engine === 'mathjax-inline') {
+        if (latex === '') {
+          output.innerHTML = '';
+        } else {
+          output.innerHTML = `$${latex}$`;
+        }
+        MathJax.typesetPromise([output]);
+      } else if (engine === 'mathjax-display') {
+        output.innerHTML = `$$${latex}$$`;
+        MathJax.typesetPromise([output]);
+      }
+    }
+
+    function insertAtCursor(text) {
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      const value = input.value;
+      input.value = value.substring(0, start) + text + value.substring(end);
+      input.selectionStart = input.selectionEnd = start + text.length;
+      input.focus();
+      render();
+    }
+
+    window.insertAtCursor = insertAtCursor; // Expose insertAtCursor for popup usage
+
+    input.addEventListener('input', render);
+    engineSelect.addEventListener('change', render);
+
+    render(); // Perform an initial render on page load
+  }
+
+  // Wait for the entire page (including MathJax) to fully load
+  window.addEventListener('load', () => {
+    initRender();
+  });
+
+  // Save the SVG content as a file
+  function saveAsSvg() {
+    const svgContent = document.querySelector('#output svg');
+    if (svgContent) {
+      const svgBlob = new Blob([svgContent.outerHTML], { type: 'image/svg+xml' });
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.href = URL.createObjectURL(svgBlob);
+      link.download = `formula-${timestamp}.svg`;
+      link.click();
+    } else {
+      alert('No SVG to save');
+    }
+  }
+
+  document.getElementById('saveSvgButton').addEventListener('click', saveAsSvg);
+</script>
+
+</body>
+</html>

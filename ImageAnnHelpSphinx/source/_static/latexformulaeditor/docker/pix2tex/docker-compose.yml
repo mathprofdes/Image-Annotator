@@ -1,0 +1,16 @@
+# https://github.com/lukas-blecher/LaTeX-OCR
+# pix2tex: Using a ViT to convert images of equations into LaTeX code.
+services:
+  pix2tex:
+    command: pix2tex/api/run.py
+    image: 'lukasblecher/pix2tex:api'
+    container_name: pix2tex
+    entrypoint: python
+    ports:
+      - '8501:8501'
+    tty: true
+    stdin_open: true
+    restart: unless-stopped
+    
+# To run the streamlit demo
+# and navigate to http://localhost:8501/ or http://your-ip:8501/

@@ -1,0 +1,10 @@
+services:
+  latex-formula-editor:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: latex-formula-editor:latest
+    container_name: latex-formula-editor
+    ports:
+      - "8080:80"
+    restart: unless-stopped

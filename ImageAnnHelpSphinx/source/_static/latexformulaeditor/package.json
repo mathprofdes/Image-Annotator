@@ -1,0 +1,20 @@
+{
+  "name": "formulaeditor",
+  "version": "1.0.0",
+  "description": "Latex Formula Editor",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:win64": "electron-packager . formulaeditor --platform=win32 --arch=x64 --out=dist --overwrite",
+    "build:win32": "electron-packager . formulaeditor --platform=win32 --arch=ia32 --out=dist --overwrite",
+    "build:mac": "electron-packager . formulaeditor --platform=darwin --arch=x64 --out=dist --overwrite",
+    "build:mac-arm": "electron-packager . formulaeditor --platform=darwin --arch=arm64 --out=dist --overwrite",
+    "build:linux": "electron-packager . formulaeditor --platform=linux --arch=x64 --out=dist --overwrite"
+  },
+  "author": "moskensoap",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^36.3.2",
+    "electron-packager": "^17.1.2"
+  }
+}

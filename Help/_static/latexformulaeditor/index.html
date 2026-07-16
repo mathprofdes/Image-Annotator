@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Latex Formula Editor</title>
+
+  <!-- Load KaTeX -->
+  <link rel="stylesheet" href="./katex/katex.min.css">
+  <script src="./katex/katex.min.js"></script>
+
+  <!-- Load MathJax -->
+  <script>
+    window.MathJax = {
+      loader: {
+        load: [
+          '[tex]/all-packages'
+        ]
+      },
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      }
+    };
+  </script>
+  <script>
+    localStorage.removeItem("MathJax-Menu-Settings");
+  </script>  
+  <script defer src="./MathJax-3.2.2/es5/tex-mml-chtml.js"></script>
+
+  <!-- Load html2canvas -->
+  <script src="./html2canvas/html2canvas.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 5px 20px 20px 20px; }
+    textarea { width: 100%; height: 150px; font-size: 16px; }
+    #output { margin-top: 20px; border: 1px solid #ccc; padding: 20px; min-height: 100px; }
+    select { margin-bottom: 10px; font-size: 16px; }
+    button { margin: 5px; }
+  </style>
+</head>
+<body>
+
+<h1>Latex Formula Editor</h1>
+
+<span style="margin-right: 30px;">
+  <label for="btnEngineSelect">Button Engine:</label>
+  <select id="btnEngineSelect">
+    <option value="katex-inline">KaTeX-inline</option>
+    <option value="katex-display">KaTeX-display</option>
+    <option value="mathjax-inline">MathJax-inline</option>
+    <option value="mathjax-display">MathJax-display</option>
+  </select>
+</span>
+
+<span>
+  <label for="engineSelect">Content Engine:</label>
+  <select id="engineSelect">
+    <option value="katex-inline">KaTeX-inline</option>
+    <option value="katex-display">KaTeX-display</option>
+    <option value="mathjax-inline">MathJax-inline</option>
+    <option value="mathjax-display">MathJax-display</option>
+  </select>
+</span>
+
+<button id="copyButton" style="margin-left: 30px;">Copy LaTeX</button>
+<!-- <a href="svg.html" target="_blank">Open SVG Render Page</a> -->
+
+<label for="scaleInput" style="margin-left: 30px;">Scale:</label>
+<input type="number" id="scaleInput" value="5" min="1" max="25" step="1" style="width: 35px; margin-right: 10px;">
+
+<button id="savePngButton">Save as PNG</button>
+<button id="saveJpgButton">Save as JPG</button>
+<button id="copyblob">Copy Formula Image</button>
+
+<br>
+
+<!-- Template Group Buttons -->
+<div id="templateGroupButtons" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; position: relative;"></div>
+
+<hr style="border: none; border-top: 1px solid #ccc; margin: 10px 0;">
+
+<!-- Formula Group Buttons -->
+<div id="groupButtons" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; position: relative;"></div>
+
+<hr style="border: none; border-top: 1px solid #ccc; margin: 10px 0;">
+
+<!-- Common Elements Buttons -->
+<div id="commonButtons" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; position: relative;"></div>
+
+<!-- Floating Popup Menu -->
+<div id="popupMenu" style="
+  position: absolute;
+  display: none;
+  background: #fff;
+  border: 1px solid #ccc;
+  padding: 10px;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+"></div>
+
+
+<textarea id="latexInput" placeholder="Enter your LaTeX formula here"></textarea>
+
+<div id="output">
+  Rendered output will appear here in real time
+</div>
+
+<script>
+  const LATEX_COMMANDS = [
+    "", "And ", "Arrowvert ", "Bbbk ", "Bbb{} ", "Big ", "Bigg ", "Biggl ", "Biggm ", "Biggr ", "Bigl ", "Bigm ", "Bigr ",
+    "Box ", "Bqty{} ", "Bumpeq ", "Cap ", "Cup ", "DeclareMathOperator{}{} ", "Delta ", "Diamond ", "Doteq ", "Downarrow ", "Finv ", "Game ",
+    "Gamma ", "Huge ", "Im ", "Join ", "LARGE ", "LaTeX ", "Lambda ", "Large ", "Leftarrow ", "Leftrightarrow ", "Lleftarrow ", "Longleftarrow ",
+    "Longleftrightarrow ", "Longrightarrow ", "Lsh ", "Omega ", "PV{} ", "Phi ", "Pi ", "Pmqty{} ", "Pr ", "Probability ", "Psi ", "Re ",
+    "Res[] ", "Rightarrow ", "Rrightarrow ", "Rsh ", "S ", "Sigma ", "Subset ", "Supset ", "TeX ", "Theta ", "Tiny ", "Tr ",
+    "Trace ", "Uparrow ", "Updownarrow ", "Upsilon ", "Vdash ", "Vert ", "Vvdash ", "Xi ", "abovewithdelims{} ", "above{} ", "absolutevalue{} ", "abs{} ",
+    "acomm{}{} ", "acos[] ", "acosecant ", "acosine ", "acot[] ", "acotangent ", "acsc[] ", "acute{} ", "admat{} ", "aleph ", "alpha ", "amalg ",
+    "angle ", "anticommutator{}{} ", "antidiagonalmatrix{} ", "approx ", "approxeq ", "arccos ", "arccosecant ", "arccosine ", "arccot ", "arccotangent ", "arccsc ", "arcsec ",
+    "arcsecant ", "arcsin ", "arcsine ", "arctan ", "arctangent ", "arg ", "arrowvert ", "asec[] ", "asecant ", "asin[] ", "asine ", "ast ",
+    "asymp ", "atan[] ", "atangent ", "atop ", "atopwithdelims ", "backepsilon ", "backprime ", "backsim ", "backsimeq ", "backslash ", "barwedge ", "bar{} ",
+    "bbFont ", "bbox[]{} ", "bcancel{} ", "because ", "begin{Bmatrix} \r\n  \r\n\\end{Bmatrix}", "begin{CD} \r\n  \r\n\\end{CD}", "begin{Vmatrix} \r\n  \r\n\\end{Vmatrix}", "begin{align*} \r\n  \r\n\\end{align*}", "begin{alignat*} \r\n  \r\n\\end{alignat*}", "begin{alignat} \r\n  \r\n\\end{alignat}", "begin{alignedat} \r\n  \r\n\\end{alignedat}", "begin{aligned} \r\n  \r\n\\end{aligned}",
+    "begin{align} \r\n  \r\n\\end{align}", "begin{array}{c} \r\n  \r\n\\end{array}", "begin{bmatrix} \r\n  \r\n\\end{bmatrix}", "begin{cases} \r\n  \r\n\\end{cases}", "begin{eqnarray*} \r\n  \r\n\\end{eqnarray*}", "begin{eqnarray} \r\n  \r\n\\end{eqnarray}", "begin{equation*} \r\n  \r\n\\end{equation*}", "begin{equation} \r\n  \r\n\\end{equation}", "begin{gather*} \r\n  \r\n\\end{gather*}", "begin{gathered} \r\n  \r\n\\end{gathered}", "begin{gather} \r\n  \r\n\\end{gather}", "begin{matrix} \r\n  \r\n\\end{matrix}",
+    "begin{multline*} \r\n  \r\n\\end{multline*}", "begin{multline} \r\n  \r\n\\end{multline}", "begin{pmatrix} \r\n  \r\n\\end{pmatrix}", "begin{smallmatrix} \r\n  \r\n\\end{smallmatrix}", "begin{split} \r\n  \r\n\\end{split}", "begin{subarray}{} \r\n  \r\n\\end{subarray}", "begin{vmatrix} \r\n  \r\n\\end{vmatrix}", "begin{}\r\n\r\n\\end{}", "beta ", "beth ", "between ", "bf ",
+    "big ", "bigcap ", "bigcirc ", "bigcup ", "bigg ", "biggl ", "biggm ", "biggr ", "bigl ", "bigm ", "bigodot ", "bigoplus ",
+    "bigotimes ", "bigr ", "bigsqcup ", "bigstar ", "bigtriangledown ", "bigtriangleup ", "biguplus ", "bigvee ", "bigwedge ", "binom{}{} ", "blacklozenge ", "blacksquare ",
+    "blacktriangle ", "blacktriangledown ", "blacktriangleleft ", "blacktriangleright ", "bmod ", "bmqty{} ", "bot ", "bowtie ", "boxdot ", "boxed{} ", "boxminus ", "boxplus ",
+    "boxtimes ", "bqty{} ", "brace ", "brack ", "braket{}{} ", "bra{} ", "breve{} ", "bullet ", "bumpeq ", "cal ", "cancelto ", "cancel{} ",
+    "cap ", "cases{} ", "cdot ", "cdotp ", "cdots ", "centerdot ", "ce{} ", "cfrac{}{} ", "checkmark ", "check{} ", "chi ", "choose ",
+    "circ ", "circeq ", "circlearrowleft ", "circlearrowright ", "circledR ", "circledS ", "circledast ", "circledcirc ", "circleddash ", "clubsuit ", "colon ", "colorbox{}{} ",
+    "color{} ", "commutator{}{} ", "comm{}{} ", "complement ", "cong ", "coprod ", "cos ", "cosecant ", "cosh ", "cosine ", "cot ", "cotangent ",
+    "coth ", "cp ", "cross ", "crossproduct ", "csc ", "csch ", "cup ", "curl ", "curlyeqprec ", "curlyeqsucc ", "curlyvee ", "curlywedge ",
+    "curvearrowleft ", "curvearrowright ", "dagger ", "daleth ", "dashleftarrow ", "dashrightarrow ", "dashv ", "dbinom{}{} ", "dd ", "ddagger ", "ddddot{} ", "dddot{} ",
+    "ddots ", "ddot{} ", "def ", "definecolor ", "deg ", "delta ", "derivative{}{} ", "det ", "determinant ", "dfrac{}{} ", "diagdown ", "diagonalmatrix{} ",
+    "diagup ", "diamond ", "diamondsuit ", "differential ", "digamma ", "dim ", "displaylines ", "displaystyle ", "div ", "divergence ", "divideontimes ", "dmat{} ",
+    "doteq ", "doteqdot ", "dotplus ", "dotproduct ", "dots ", "dotsb ", "dotsc ", "dotsi ", "dotsm ", "dotso ", "dot{} ", "doublebarwedge ",
+    "doublecap ", "doublecup ", "downarrow ", "downdownarrows ", "downharpoonleft ", "downharpoonright ", "dv[]{}{} ", "dyad{}{} ", "ell ", "emptyset ", "end{} ", "enspace ",
+    "epsilon ", "eqalignno{} ", "eqalign{} ", "eqcirc ", "eqref{} ", "eqsim ", "eqslantgtr ", "eqslantless ", "equiv ", "erf ", "eta ", "eth ",
+    "evaluated{} _{}^{}", "eval{} _{}^{}", "ev{} ", "exists ", "exp ", "expectationvalue{}{} ", "exponential ", "expval{} ", "fallingdotseq ", "fbox{} ", "fderivative{}{} ", "fdv{}{} ",
+    "flat ", "flatfrac{} ()", "forall ", "frac{}{} ", "frak ", "frown ", "functionalderivative{}{} ", "gamma ", "gcd ", "ge ", "genfrac ", "geq ",
+    "geqq ", "geqslant ", "gets ", "gg ", "ggg ", "gggtr ", "gimel ", "gnapprox ", "gneq ", "gneqq ", "gnsim ", "grad ",
+    "gradient ", "gradientnabla ", "grave ", "gt ", "gtrapprox ", "gtrdot ", "gtreqless ", "gtreqqless ", "gtrless ", "gtrsim ", "gvertneqq ", "hat{} ",
+    "hbar ", "hbox{} ", "hdashline ", "heartsuit ", "hline ", "hom ", "hookleftarrow ", "hookrightarrow ", "hphantom{} ", "hskip ", "hslash ", "hspace{} ",
+    "huge ", "hypcosecant ", "hypcosine ", "hypcotangent ", "hypsecant ", "hypsine ", "hyptangent ", "identitymatrix{} ", "idotsint ", "iff ", "iiiint ", "iiint ",
+    "iint ", "imaginary ", "imath ", "imat{} ", "impliedby ", "implies ", "in ", "inf ", "infty ", "injlim ", "innerproduct{}{} ", "int ",
+    "int\\limits_{}^{} ", "int_{}^{} ", "intercal ", "intop ", "iota ", "it ", "jmath ", "kappa ", "ker ", "kern ", "ketbra{}{} ", "ket{} ",
+    "lVert ", "label{} ", "lambda ", "land ", "langle ", "laplacian ", "large ", "lbrace ", "lbrack ", "lceil ", "ldotp ", "ldots ",
+    "le ", "leadsto ", "left ", "leftarrow ", "leftarrowtail ", "leftharpoondown ", "leftharpoonup ", "leftleftarrows ", "leftrightarrow ", "leftrightarrows ", "leftrightharpoons ", "leftrightsquigarrow ",
+    "leftroot{} ", "leftthreetimes ", "leq ", "leqalignno{} ", "leqq ", "leqslant ", "lessapprox ", "lessdot ", "lesseqgtr ", "lesseqqgtr ", "lessgtr ", "lesssim ",
+    "let ", "lfloor ", "lg ", "lgroup ", "lhd ", "lim ", "lim\\nolimits_{ \\to } ", "lim_{ \\to } ", "liminf ", "limits ", "limsup ", "ll ",
+    "llcorner ", "lll ", "llless ", "lmoustache ", "ln ", "lnapprox ", "lneq ", "lneqq ", "lnot ", "lnsim ", "log ", "logarithm ",
+    "longLeftrightharpoons ", "longRightleftharpoons ", "longleftarrow ", "longleftrightarrow ", "longleftrightarrows ", "longmapsto ", "longrightarrow ", "longrightleftharpoons ", "looparrowleft ", "looparrowright ", "lor ", "lower ",
+    "lozenge ", "lrcorner ", "lt ", "ltimes ", "lvert ", "lvertneqq ", "maltese ", "mapsto ", "mathbb{} ", "mathbf{} ", "mathbin{} ", "mathcal{} ",
+    "mathchoice ", "mathclose{} ", "mathfrak{} ", "mathinner{} ", "mathit{} ", "mathopen{} ", "mathop{} ", "mathord{} ", "mathpunct{} ", "mathrel{} ", "mathring{} ", "mathrm{} ",
+    "mathscr{} ", "mathsf{} ", "mathstrut{} ", "mathtt{} ", "matrixdeterminant{} ", "matrixelement{}{}{} ", "matrixel{}{}{} ", "matrixquantity{} ", "max ", "mbox{} ", "mdet{} ", "measuredangle ",
+    "mel{}{}{} ", "mho ", "mid ", "middle ", "min ", "mit ", "models ", "mod{} ", "mp ", "mqty{} ", "mspace ", "mu ",
+    "multimap ", "nLeftarrow ", "nLeftrightarrow ", "nRightarrow ", "nVDash ", "nVdash ", "nabla ", "natural ", "naturallogarithm ", "ncong ", "ne ", "nearrow ",
+    "neg ", "negmedspace ", "negthickspace ", "negthinspace ", "neq ", "newline ", "nexists ", "ngeq ", "ngeqq ", "ngeqslant ", "ngtr ", "ni ",
+    "nleftarrow ", "nleftrightarrow ", "nleq ", "nleqq ", "nleqslant ", "nless ", "nmid ", "nobreakspace ", "nolimits ", "nonumber ", "normalsize ", "norm{} ",
+    "not ", "notChar ", "notag ", "notin ", "nparallel ", "nprec ", "npreceq ", "nrightarrow ", "nshortmid ", "nshortparallel ", "nsim ", "nsubseteq ",
+    "nsubseteqq ", "nsucc ", "nsucceq ", "nsupseteq ", "nsupseteqq ", "ntriangleleft ", "ntrianglelefteq ", "ntriangleright ", "ntrianglerighteq ", "nu ", "nvDash ", "nvdash ",
+    "nwarrow ", "odot ", "oint ", "omega ", "omicron ", "ominus ", "operatorname{} ", "oplus ", "op{}{} ", "order{} ", "oslash ", "otimes ",
+    "outerproduct{}{} ", "overbrace{} ", "overleftarrow{} ", "overleftrightarrow{} ", "overline{} ", "overparen{} ", "overrightarrow{} ", "overset{}{} ", "overwithdelims ", "over{} ", "owns ", "parallel ",
+    "partial ", "partialderivative{}{} ", "paulimatrix{} ", "pb{}{} ", "pderivative{} ", "pdv[]{}{} ", "perp ", "phantom{} ", "phi ", "pi ", "pitchfork ", "pm ",
+    "pmat{} ", "pmb{} ", "pmod{} ", "pmqty{} ", "pod{} ", "poissonbracket{}{} ", "pqty{} ", "prec ", "precapprox ", "preccurlyeq ", "preceq ", "precnapprox ",
+    "precneqq ", "precnsim ", "precsim ", "prime ", "principalvalue ", "prod ", "projlim ", "propto ", "psi ", "pv{} ", "qall ", "qand ",
+    "qas ", "qassume ", "qc ", "qcc ", "qcomma ", "qelse ", "qeven ", "qfor ", "qgiven ", "qif ", "qin ", "qinteger ",
+    "qlet ", "qodd ", "qor ", "qotherwise ", "qqtext{} ", "qquad ", "qq{} ", "qthen ", "qty{} ", "quad ", "quantity ", "qunless ",
+    "qusing ", "rVert ", "rangle ", "rank ", "rbrace ", "rbrack ", "rceil ", "real ", "ref{} ", "restriction ", "rfloor ", "rgroup ",
+    "rhd ", "rho ", "right ", "rightarrow ", "rightarrowtail ", "rightharpoondown ", "rightharpoonup ", "rightleftarrows ", "rightleftharpoons ", "rightrightarrows ", "rightsquigarrow ", "rightthreetimes ",
+    "risingdotseq ", "rmoustache ", "root ", "rtimes ", "rvert ", "sPmqty{} ", "sbmqty{} ", "scriptscriptstyle{} ", "scriptsize{} ", "scriptstyle{} ", "scr{} ", "searrow ",
+    "sec ", "secant ", "sech ", "setminus ", "sharp ", "shortmid ", "shortparallel ", "shoveleft ", "shoveright ", "sideset{}{}{} ", "sigma ", "sim ",
+    "simeq ", "sin ", "sine[] ", "sinh ", "small ", "smallfrown ", "smallint ", "smallmatrixquantity{} ", "smallsetminus ", "smallsmile ", "smash{} ", "smdet{} ",
+    "smile ", "smqty{} ", "space ", "spadesuit ", "sphericalangle ", "spmqty{} ", "sqcap ", "sqcup ", "sqrt[]{} ", "sqsubset ", "sqsubseteq ", "sqsupset ",
+    "sqsupseteq ", "square ", "stackrel{}{} ", "star ", "strut ", "subset ", "subseteq ", "subseteqq ", "subsetneq ", "subsetneqq ", "substack{} ", "succ ",
+    "succapprox ", "succcurlyeq ", "succeq ", "succnapprox ", "succneqq ", "succnsim ", "succsim ", "sum ", "sum\\nolimits_{}^{} ", "sum_{}^{} ", "sup ", "supset ",
+    "supseteq ", "supseteqq ", "supsetneq ", "supsetneqq ", "surd ", "svmqty{} ", "swarrow ", "tag{} ", "tan ", "tangent ", "tanh ", "tau ",
+    "tbinom{}{} ", "textbf{} ", "textcolor{} ", "textit{} ", "textrm{} ", "textsf{} ", "textstyle{} ", "texttt{} ", "text{} ", "tfrac{}{} ", "therefore ", "theta ",
+    "thickapprox ", "thicksim ", "thinspace ", "tilde ", "times ", "tiny ", "to ", "top ", "tr ", "trace ", "triangle ", "triangledown ",
+    "triangleleft ", "trianglelefteq ", "triangleq ", "triangleright ", "trianglerighteq ", "tripledash ", "twoheadleftarrow ", "twoheadrightarrow ", "ulcorner ", "underbrace{} ", "underleftarrow{} ", "underleftrightarrow{} ",
+    "underline{} ", "underparen{} ", "underrightarrow{} ", "underset{}{} ", "unicode{} ", "unlhd ", "unrhd ", "uparrow ", "updownarrow ", "upharpoonleft ", "upharpoonright ", "uplus ",
+    "uproot{} ", "upsilon ", "upuparrows ", "urcorner ", "vDash ", "varDelta ", "varGamma ", "varLambda ", "varOmega ", "varPhi ", "varPi ", "varPsi ",
+    "varSigma ", "varTheta ", "varUpsilon ", "varXi ", "varepsilon ", "variation{} ", "varinjlim ", "varkappa ", "varliminf ", "varlimsup ", "varnothing ", "varphi ",
+    "varpi ", "varprojlim ", "varpropto ", "varrho ", "varsigma ", "varsubsetneq ", "varsubsetneqq ", "varsupsetneq ", "varsupsetneqq ", "vartheta ", "vartriangle ", "vartriangleleft ",
+    "vartriangleright ", "var{} ", "va{} ", "vb{} ", "vcenter{} ", "vdash ", "vdot ", "vdots ", "vectorarrow{} ", "vectorbold{} ", "vectorunit{} ", "vec{} ",
+    "vee ", "veebar ", "vert ", "vmqty{} ", "vqty{} ", "vu{} ", "wedge ", "widehat{} ", "widetilde{} ", "wp ", "wr ", "xLeftrightharpoons[]{} ",
+    "xRightleftharpoons[]{} ", "xcancel{} ", "xi ", "xleftarrow[]{} ", "xleftrightarrow[]{} ", "xmatrix{}{}{} ", "xmat{}{}{} ", "xrightarrow[]{} ", "xrightleftharpoons[]{} ", "yen ", "zeromatrix{}{} ", "zeta ", "zmat{}{} "
+  ];
+
+  const latexInput = document.getElementById("latexInput");
+  const suggestionBox = document.createElement("div");
+  suggestionBox.style.position = "absolute";
+  suggestionBox.style.display = "none";
+  suggestionBox.style.background = "#fff";
+  suggestionBox.style.border = "1px solid #ccc";
+  suggestionBox.style.zIndex = 1001;
+  suggestionBox.style.maxHeight = "200px";
+  suggestionBox.style.overflowY = "auto";
+  suggestionBox.style.borderRadius = "6px";
+  suggestionBox.style.boxShadow = "0 2px 6px rgba(0,0,0,0.2)";
+  suggestionBox.style.fontSize = "14px";
+  suggestionBox.style.padding = "4px 0";
+  document.body.appendChild(suggestionBox);
+
+  let currentSuggestions = [];
+  let selectedIndex = -1;
+
+  // Simple fuzzy match: e.g., "fc" matches "frac"
+  function fuzzyMatch(input, target) {
+    let i = 0;
+    for (let char of target) {
+      if (char === input[i]) i++;
+      if (i === input.length) return true;
+    }
+    return false;
+  }
+
+  latexInput.addEventListener("input", e => {
+    const pos = latexInput.selectionStart;
+    const value = latexInput.value.slice(0, pos);
+    const { row, col } = calculateColumnPosition(value);
+
+    const match = value.match(/\\([^\s\\]*)$/);
+    if (match) {
+      const prefix = match[1];
+
+      // First: exact prefix match
+      let startMatches = LATEX_COMMANDS.filter(cmd => cmd.startsWith(prefix));
+
+      // Check if the input matches any command exactly
+      if (startMatches.length === 1 && startMatches[0] === prefix) {
+        suggestionBox.style.display = "none"; // Hide suggestion box if the input matches a command exactly
+        return;
+      }
+
+      startMatches.sort((a, b) => a.length - b.length || a.localeCompare(b));
+
+      // Second: include match (not prefix, but contains substring)
+      const includeMatches = LATEX_COMMANDS.filter(cmd =>
+        cmd.includes(prefix) && !cmd.startsWith(prefix)
+      );
+
+      // Combine both (prefix matches first, then include matches)
+      currentSuggestions = [...startMatches, ...includeMatches];
+
+      // If still no matches, fall back to fuzzy match
+      if (currentSuggestions.length === 0) {
+        currentSuggestions = LATEX_COMMANDS.filter(cmd => fuzzyMatch(prefix, cmd));
+      }
+
+      // Show suggestions if any
+      if (currentSuggestions.length > 0) {
+        showSuggestions(currentSuggestions, row, col, match[0].length);
+        return;
+      }
+    }
+
+    suggestionBox.style.display = "none"; // Hide the suggestion box if no match
+  });
+
+  function scrollFocusedItemIntoView() {
+    const children = suggestionBox.children;
+    if (selectedIndex >= 0 && selectedIndex < children.length) {
+      const item = children[selectedIndex];
+      
+      const boxRect = suggestionBox.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+
+      if (itemRect.top < boxRect.top) {
+        suggestionBox.scrollTop -= (boxRect.top - itemRect.top);
+      } else if (itemRect.bottom > boxRect.bottom) {
+        suggestionBox.scrollTop += (itemRect.bottom - boxRect.bottom);
+      }
+    }
+  }
+
+  latexInput.addEventListener("keydown", e => {
+    if (suggestionBox.style.display === "none") return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, currentSuggestions.length - 1);
+      updateSuggestionHighlight();
+      scrollFocusedItemIntoView();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, 0);
+      updateSuggestionHighlight();
+      scrollFocusedItemIntoView();
+    } else if (e.key === "Tab" || e.key === "Enter") {
+      if (selectedIndex >= 0) {
+        e.preventDefault();
+        insertSuggestion(currentSuggestions[selectedIndex]);
+        initRender();
+      }
+    } else if (e.key === "Escape") {
+      suggestionBox.style.display = "none";
+    }
+  });
+
+  function detectBrowser() {
+    const userAgent = navigator.userAgent;
+
+    if (/Edg\//.test(userAgent)) return "edge";
+    if (/Chrome/.test(userAgent) && !/Edg\//.test(userAgent)) return "chrome";
+    if (/Firefox/.test(userAgent)) return "firefox";
+    if (/Safari/.test(userAgent) && !/Chrome/.test(userAgent)) return "safari";
+
+    return "unknown";
+  }
+
+  function getBrowserOffsets() {
+    const browser = detectBrowser();
+    let rowHeight, colWidth, topOffset, leftOffset;
+
+    switch (browser) {
+      case "edge":
+        rowHeight = 18.4;
+        colWidth = 8;
+        topOffset = 20;
+        leftOffset = -20;
+        break;
+      case "chrome":
+        rowHeight = 18.4;
+        colWidth = 8.85;
+        topOffset = 20;
+        leftOffset = -20;
+        break;
+      case "firefox":
+        rowHeight = 22;
+        colWidth = 9.6;
+        topOffset = 25;
+        leftOffset = -20;
+        break;
+      case "safari":
+        rowHeight = 18;
+        colWidth = 8.55;
+        topOffset = 25;
+        leftOffset = -20;
+        break;
+      default:
+        rowHeight = 18.4;
+        colWidth = 8.85;
+        topOffset = 20;
+        leftOffset = -20;
+    }
+
+    return { rowHeight, colWidth, topOffset, leftOffset };
+  }
+
+
+  function showSuggestions(list, row, col, prefixLen) {
+    const rect = latexInput.getBoundingClientRect();
+    let rowHeight, colWidth, topOffset, leftOffset;
+    ({ rowHeight, colWidth, topOffset, leftOffset } = getBrowserOffsets());
+
+    // Adjust top position based on cursor position and account for scroll
+    const top = rect.top + window.scrollY + topOffset + row * rowHeight - latexInput.scrollTop;
+
+    // Adjust left position based on cursor position
+    const left = rect.left + window.scrollX + leftOffset + col * colWidth;
+
+    suggestionBox.innerHTML = "";
+    list.forEach((item, index) => {
+      const div = document.createElement("div");
+      div.textContent = `\\${item}`;
+      div.style.padding = "4px 12px";
+      div.style.cursor = "pointer";
+      div.addEventListener("mousedown", e => {
+        e.preventDefault();
+        insertSuggestion(item);
+        initRender();
+      });
+      suggestionBox.appendChild(div);
+    });
+    selectedIndex = 0;
+    updateSuggestionHighlight();
+    suggestionBox.style.left = `${left}px`;
+    suggestionBox.style.top = `${top}px`;
+    suggestionBox.style.display = "block";
+    suggestionBox.dataset.prefixLen = prefixLen;
+  }
+
+  function updateSuggestionHighlight() {
+    Array.from(suggestionBox.children).forEach((child, idx) => {
+      child.style.background = idx === selectedIndex ? "#e0e0e0" : "white";
+    });
+  }
+
+  function insertSuggestion(text) {
+    const pos = latexInput.selectionStart;
+    const prefixLen = parseInt(suggestionBox.dataset.prefixLen || "0");
+    latexInput.setRangeText(`\\${text}`, pos - prefixLen, pos, "end");
+    suggestionBox.style.display = "none"; // Hide the suggestion box after insertion
+    latexInput.focus();
+  }
+
+  function calculateColumnPosition(value) {
+    let rowHeight, colWidth, topOffset, leftOffset;
+    ({ rowHeight, colWidth, topOffset, leftOffset } = getBrowserOffsets());
+    const maxCols = Math.floor(latexInput.clientWidth / colWidth);
+    const lines = value.split('\n');
+    let row = 0;
+    let col = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (i === lines.length - 1) {
+        col = line.length % maxCols;
+        row += Math.floor(line.length / maxCols);
+      } else {
+        row += Math.floor(line.length / maxCols) + 1;
+      }
+    }
+  return { row, col };
+  }
+</script>
+
+
+<script>
+  document.getElementById('copyButton').addEventListener('click', function() {
+    const input = document.getElementById('latexInput');
+    const button = this;
+    input.select();
+    document.execCommand('copy');
+
+    const originalText = button.textContent;
+    button.textContent = 'Copy LaTeX';
+
+    setTimeout(function() {
+      button.textContent = originalText;
+    }, 250);
+  });
+
+  function getScale() {
+    const input = document.getElementById('scaleInput');
+    let scale = parseFloat(input.value);
+    if (isNaN(scale) || scale <= 0) {
+      input.value = 1;
+      scale = 1;
+    }
+    return scale;
+  }
+
+  function handleSave(format) {
+    const output = document.getElementById('output');
+    const scale = getScale();
+
+    const assistiveMMLs = Array.from(output.querySelectorAll('mjx-assistive-mml'));
+    const parentMap = new Map();
+    assistiveMMLs.forEach(el => {
+      const parent = el.parentNode;
+      const next = el.nextSibling;
+      parentMap.set(el, { parent, next });
+      parent.removeChild(el);
+    });
+
+    html2canvas(output, {
+      backgroundColor: 'white',
+      scale: scale
+    }).then(canvas => {
+      assistiveMMLs.forEach(el => {
+        const { parent, next } = parentMap.get(el);
+        if (next) {
+          parent.insertBefore(el, next);
+        } else {
+          parent.appendChild(el);
+        }
+      });
+
+      if (format === 'clipboard') {
+        copyToClipboard(canvas);
+      } else {
+        cropAndSave(canvas, format, scale);
+      }
+    });
+  }
+
+  function cropAndSave(canvas, format, scale) {
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    const border = Math.ceil(3 * scale);
+    const padding = Math.ceil(1 * scale);
+
+    let top = height, bottom = 0, left = width, right = 0;
+
+    for (let y = border; y < height - border; y++) {
+      for (let x = border; x < width - border; x++) {
+        const index = (y * width + x) * 4;
+        const r = data[index], g = data[index + 1], b = data[index + 2], a = data[index + 3];
+        const isNotWhite = !(r > 240 && g > 240 && b > 240 && a > 240);
+        if (isNotWhite) {
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+          if (x < left) left = x;
+          if (x > right) right = x;
+        }
+      }
+    }
+
+    if (top > bottom || left > right) {
+      alert("Nothing to save: no visible content.");
+      return;
+    }
+
+    top = Math.max(top - padding, 0);
+    left = Math.max(left - padding, 0);
+    bottom = Math.min(bottom + padding, height - 1);
+    right = Math.min(right + padding, width - 1);
+
+    const croppedWidth = right - left + 1;
+    const croppedHeight = bottom - top + 1;
+
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = croppedWidth;
+    croppedCanvas.height = croppedHeight;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    croppedCtx.drawImage(canvas, left, top, croppedWidth, croppedHeight, 0, 0, croppedWidth, croppedHeight);
+
+    croppedCanvas.toBlob(blob => {
+      const link = document.createElement('a');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      link.href = URL.createObjectURL(blob);
+      link.download = `formula-${timestamp}.${format === 'jpg' ? 'jpg' : 'png'}`;
+      link.click();
+    }, format === 'jpg' ? 'image/jpeg' : 'image/png');
+  }
+
+  function copyToClipboard(canvas) {
+    const scale = getScale();
+
+    const ctx = canvas.getContext('2d');
+    const { width, height } = canvas;
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const data = imageData.data;
+
+    const border = Math.ceil(3 * scale);
+    const padding = Math.ceil(1 * scale);
+
+    let top = height, bottom = 0, left = width, right = 0;
+
+    for (let y = border; y < height - border; y++) {
+      for (let x = border; x < width - border; x++) {
+        const index = (y * width + x) * 4;
+        const r = data[index], g = data[index + 1], b = data[index + 2], a = data[index + 3];
+        const isNotWhite = !(r > 240 && g > 240 && b > 240 && a > 240);
+        if (isNotWhite) {
+          if (y < top) top = y;
+          if (y > bottom) bottom = y;
+          if (x < left) left = x;
+          if (x > right) right = x;
+        }
+      }
+    }
+
+    if (top > bottom || left > right) {
+      alert("Nothing to copy: no visible content.");
+      return;
+    }
+
+    top = Math.max(top - padding, 0);
+    left = Math.max(left - padding, 0);
+    bottom = Math.min(bottom + padding, height - 1);
+    right = Math.min(right + padding, width - 1);
+
+    const croppedWidth = right - left + 1;
+    const croppedHeight = bottom - top + 1;
+
+    const croppedCanvas = document.createElement('canvas');
+    croppedCanvas.width = croppedWidth;
+    croppedCanvas.height = croppedHeight;
+    const croppedCtx = croppedCanvas.getContext('2d');
+    croppedCtx.drawImage(canvas, left, top, croppedWidth, croppedHeight, 0, 0, croppedWidth, croppedHeight);
+
+    croppedCanvas.toBlob(blob => {
+      navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ])
+      .then(() => {
+        const btn = document.getElementById("copyblob");
+        const original = btn.textContent;
+        btn.textContent = "Copy Formula Image";
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.disabled = false;
+        }, 250);
+      })
+      .catch(err => alert("Copy failed: " + err));
+    }, 'image/png');
+  }
+
+  document.getElementById("savePngButton").onclick = () => handleSave("png");
+  document.getElementById("saveJpgButton").onclick = () => handleSave("jpg");
+  document.getElementById("copyblob").onclick = () => handleSave("clipboard");
+</script>
+
+
+<script>
+// Template Definitions
+const templates = {
+  "algebra": {
+    icon: '\\sqrt{a^2+b^2}',
+    formulas: [
+      { latex: '\\left(x-1\\right)\\left(x+3\\right)', insertText: '\\left(x-1\\right)\\left(x+3\\right)' },
+      { latex: '\\sqrt{a^2+b^2}', insertText: '\\sqrt{a^2+b^2}' },
+      { latex: '\\left(\\frac{a}{b}\\right)^{n}=\\frac{a^{n}}{b^{n}}', insertText: '\\left(\\frac{a}{b}\\right)^{n}=\\frac{a^{n}}{b^{n}}' },
+      { latex: '\\frac{a}{b}\\pm\\frac{c}{d}=\\frac{ad\\pm bc}{bd}', insertText: '\\frac{a}{b}\\pm\\frac{c}{d}=\\frac{ad\\pm bc}{bd}' },
+      { latex: '\\frac{x^{2}}{a^{2}}-\\frac{y^{2}}{b^{2}}=1', insertText: '\\frac{x^{2}}{a^{2}}-\\frac{y^{2}}{b^{2}}=1' },
+      { latex: '\\frac{1}{\\sqrt{a}}=\\frac{\\sqrt{a}}{a},a\\ge0', insertText: '\\frac{1}{\\sqrt{a}}=\\frac{\\sqrt{a}}{a},a\\ge0' },
+      { latex: '\\sqrt[n]{a^{n}}=\\left(\\sqrt[n]{a}\\right)^{n}', insertText: '\\sqrt[n]{a^{n}}=\\left(\\sqrt[n]{a}\\right)^{n}' },
+      { latex: 'x={-b\\pm\\sqrt{b^2-4ac}\\over2a}', insertText: 'x={-b\\pm\\sqrt{b^2-4ac}\\over2a}' },
+      { latex: 'y-y_{1}=k\\left(x-x_{1}\\right)', insertText: 'y-y_{1}=k\\left(x-x_{1}\\right)' },
+      { latex: '\\left\\{\\begin{matrix}x=a+r\\text{cos}\\theta\\\\y=b+r\\text{sin}\\theta\\end{matrix}\\right.', insertText: '\\left\\{\\begin{matrix}x=a+r\\text{cos}\\theta\\\\y=b+r\\text{sin}\\theta\\end{matrix}\\right.' },
+      { latex: '\\begin{array}{l}\\text{For an equation of the form: }x^{3}-1=0\\\\\\text{Let }\\omega=\\frac{-1+\\sqrt{3}i}{2}\\\\x_{1}=1,\\quad x_{2}=\\omega=\\frac{-1+\\sqrt{3}i}{2}\\\\x_{3}=\\omega^{2}=\\frac{-1-\\sqrt{3}i}{2}\\end{array}', insertText: '\\begin{array}{l}\\text{For an equation of the form: }x^{3}-1=0\\\\\\text{Let }\\omega=\\frac{-1+\\sqrt{3}i}{2}\\\\x_{1}=1,\\quad x_{2}=\\omega=\\frac{-1+\\sqrt{3}i}{2}\\\\x_{3}=\\omega^{2}=\\frac{-1-\\sqrt{3}i}{2}\\end{array}' },
+      { latex: '\\begin{array}{l}ax^2+bx+c=0\\\\\\Delta=b^2-4ac\\\\\\begin{cases}\\Delta>0&\\text{: two distinct real roots}\\\\\\Delta=0&\\text{: two equal real roots}\\\\\\Delta<0&\\text{: no real roots}\\end{cases}\\end{array}', insertText: '\\begin{array}{l}ax^2+bx+c=0\\\\\\Delta=b^2-4ac\\\\\\begin{cases}\\Delta>0&\\text{: two distinct real roots}\\\\\\Delta=0&\\text{: two equal real roots}\\\\\\Delta<0&\\text{: no real roots}\\end{cases}\\end{array}' },
+      { latex: '\\begin{array}{l}ax^2+bx+c=0\\\\\\Delta=b^2-4ac\\\\x_{1,2}=\\dfrac{-b\\pm\\sqrt{b^2-4ac}}{2a}\\\\x_1+x_2=-\\dfrac{b}{a}\\\\x_1x_2=\\dfrac{c}{a}\\end{array}', insertText: '\\begin{array}{l}ax^2+bx+c=0\\\\\\Delta=b^2-4ac\\\\x_{1,2}=\\dfrac{-b\\pm\\sqrt{b^2-4ac}}{2a}\\\\x_1+x_2=-\\dfrac{b}{a}\\\\x_1x_2=\\dfrac{c}{a}\\end{array}' }
+    ]
+  },
+  "geometry": {
+    icon: '\\Delta ABC',
+    formulas: [
+      { latex: '\\Delta ABC', insertText: '\\Delta ABC' },
+      { latex: 'a\\parallel c,b\\parallel c\\Rightarrow a\\parallel b', insertText: 'a\\parallel c,b\\parallel c\\Rightarrow a\\parallel b' },
+      { latex: 'l\\perp\\beta,l\\subset\\alpha\\Rightarrow\\alpha\\perp\\beta', insertText: 'l\\perp\\beta,l\\subset\\alpha\\Rightarrow\\alpha\\perp\\beta' },
+      { latex: '\\left.\\begin{matrix}a\\perp\\alpha\\\\b\\perp\\alpha\\end{matrix}\\right\\}\\Rightarrow a\\parallel b', insertText: '\\left.\\begin{matrix}a\\perp\\alpha\\\\b\\perp\\alpha\\end{matrix}\\right\\}\\Rightarrow a\\parallel b' },
+      { latex: 'P\\in\\alpha,P\\in\\beta,\\alpha\\cap\\beta=l\\Rightarrow P\\in l', insertText: 'P\\in\\alpha,P\\in\\beta,\\alpha\\cap\\beta=l\\Rightarrow P\\in l' },
+      { latex: '\\alpha\\perp\\beta,\\alpha\\cap\\beta=l,a\\subset\\alpha,a\\perp l\\Rightarrow a\\perp\\beta', insertText: '\\alpha\\perp\\beta,\\alpha\\cap\\beta=l,a\\subset\\alpha,a\\perp l\\Rightarrow a\\perp\\beta' },
+      { latex: '\\left.\\begin{matrix}a\\subset\\beta,b\\subset\\beta,a\\cap b=P\\\\a\\parallel\\partial,b\\parallel\\partial\\end{matrix}\\right\\}\\Rightarrow\\beta\\parallel\\alpha', insertText: '\\left.\\begin{matrix}a\\subset\\beta,b\\subset\\beta,a\\cap b=P\\\\a\\parallel\\partial,b\\parallel\\partial\\end{matrix}\\right\\}\\Rightarrow\\beta\\parallel\\alpha' },
+      { latex: '\\alpha\\parallel\\beta,\\gamma\\cap\\alpha=a,\\gamma\\cap\\beta=b\\Rightarrow a\\parallel b', insertText: '\\alpha\\parallel\\beta,\\gamma\\cap\\alpha=a,\\gamma\\cap\\beta=b\\Rightarrow a\\parallel b' },
+      { latex: 'A\\in l,B\\in l,A\\in\\alpha,B\\in\\alpha\\Rightarrow l\\subset\\alpha', insertText: 'A\\in l,B\\in l,A\\in\\alpha,B\\in\\alpha\\Rightarrow l\\subset\\alpha' },
+      { latex: '\\left.\\begin{matrix}m\\subset\\alpha,n\\subset\\alpha,m\\cap n=P\\\\a\\perp m,a\\perp n\\end{matrix}\\right\\}\\Rightarrow a\\perp\\alpha', insertText: '\\left.\\begin{matrix}m\\subset\\alpha,n\\subset\\alpha,m\\cap n=P\\\\a\\perp m,a\\perp n\\end{matrix}\\right\\}\\Rightarrow a\\perp\\alpha' },
+      { latex: '\\text{In a right triangle, with legs }a\\text{ and }b\\text{ and hypotenuse }c,\\quad a^2+b^2=c^2', insertText: '\\text{In a right triangle, with legs }a\\text{ and }b\\text{ and hypotenuse }c,\\quad a^2+b^2=c^2' }
+    ]
+  },
+  "inequality": {
+    icon: 'a>b',
+    formulas: [
+      { latex: 'a>b,b>c\\Rightarrow a>c', insertText: 'a>b,b>c\\Rightarrow a>c' },
+      { latex: 'a>b,c>d\\Rightarrow a+c>b+d', insertText: 'a>b,c>d\\Rightarrow a+c>b+d' },
+      { latex: 'a>b>0,c>d>0\\Rightarrow ac>bd', insertText: 'a>b>0,c>d>0\\Rightarrow ac>bd' },
+      { latex: '\\begin{array}{c}a\\gt b,c\\gt 0\\Rightarrow ac\\gt bc\\\\a\\gt b,c\\lt 0\\Rightarrow ac\\lt bc\\end{array}', insertText: '\\begin{array}{c}a\\gt b,c\\gt 0\\Rightarrow ac\\gt bc\\\\a\\gt b,c\\lt 0\\Rightarrow ac\\lt bc\\end{array}' },
+      { latex: '\\left|a-b\\right|\\geqslant\\left|a\\right|-\\left|b\\right|', insertText: '\\left|a-b\\right|\\geqslant\\left|a\\right|-\\left|b\\right|' },
+      { latex: '-\\left|a\\right|\\leqslant a\\leqslant\\left|a\\right|', insertText: '-\\left|a\\right|\\leqslant a\\leqslant\\left|a\\right|' },
+      { latex: '\\left|a\\right|\\leqslant b\\Rightarrow-b\\leqslant a\\leqslant\\left|b\\right|', insertText: '\\left|a\\right|\\leqslant b\\Rightarrow-b\\leqslant a\\leqslant\\left|b\\right|' },
+      { latex: '\\left|a+b\\right|\\leqslant\\left|a\\right|+\\left|b\\right|', insertText: '\\left|a+b\\right|\\leqslant\\left|a\\right|+\\left|b\\right|' },
+      { latex: '\\begin{array}{c}a\\gt b\\gt 0,\\quad n\\in\\mathbb{N},\\quad n\\gt 1\\\\\\Rightarrow\\ a^{n}\\gt b^{n},\\quad\\sqrt[n]{a}\\gt\\sqrt[n]{b}\\end{array}', insertText: '\\begin{array}{c}a\\gt b\\gt 0,\\quad n\\in\\mathbb{N},\\quad n\\gt 1\\\\\\Rightarrow\\ a^{n}\\gt b^{n},\\quad\\sqrt[n]{a}\\gt\\sqrt[n]{b}\\end{array}' },
+      { latex: '\\left(\\sum_{k=1}^n a_k b_k\\right)^{\\!\\!2}\\leq\\left(\\sum_{k=1}^n a_k^2\\right)\\left(\\sum_{k=1}^n b_k^2\\right)', insertText: '\\left(\\sum_{k=1}^n a_k b_k\\right)^{\\!\\!2}\\leq\\left(\\sum_{k=1}^n a_k^2\\right)\\left(\\sum_{k=1}^n b_k^2\\right)' },
+      { latex: '\\begin{aligned}&a,b\\in\\mathbb{R}^+\\\\&\\Rightarrow\\frac{a+b}{2}\\geq\\sqrt{ab}\\\\&\\text{Equality holds if and only if }a=b\\end{aligned}', insertText: '\\begin{aligned}&a,b\\in\\mathbb{R}^+\\\\&\\Rightarrow\\frac{a+b}{2}\\geq\\sqrt{ab}\\\\&\\text{Equality holds if and only if }a=b\\end{aligned}' },
+      { latex: '\\begin{aligned}&\\text{Let }a,b\\in\\mathbb{R},\\text{ then}\\\\&\\quad a^2+b^2\\ge 2ab\\\\&\\text{with equality if and only if }a=b.\\end{aligned}', insertText: '\\begin{aligned}&\\text{Let }a,b\\in\\mathbb{R},\\text{ then}\\\\&\\quad a^2+b^2\\ge 2ab\\\\&\\text{with equality if and only if }a=b.\\end{aligned}' },
+      { latex: '\\begin{array}{c}H_{n}=\\frac{n}{\\sum\\limits_{i=1}^{n}\\frac{1}{x_{i}}}=\\frac{n}{\\frac{1}{x_{1}}+\\frac{1}{x_{2}}+\\cdots+\\frac{1}{x_{n}}}\\\\G_{n}=\\sqrt[n]{\\prod\\limits_{i=1}^{n}x_{i}}=\\sqrt[n]{x_{1}x_{2}\\cdots x_{n}}\\\\A_{n}=\\frac{1}{n}\\sum\\limits_{i=1}^{n}x_{i}=\\frac{x_{1}+x_{2}+\\cdots+x_{n}}{n}\\\\Q_{n}=\\sqrt{\\sum\\limits_{i=1}^{n}x_{i}^{2}}=\\sqrt{\\frac{x_{1}^{2}+x_{2}^{2}+\\cdots+x_{n}^{2}}{n}}\\\\H_{n}\\leq G_{n}\\leq A_{n}\\leq Q_{n}\\end{array}', insertText: '\\begin{array}{c}H_{n}=\\frac{n}{\\sum\\limits_{i=1}^{n}\\frac{1}{x_{i}}}=\\frac{n}{\\frac{1}{x_{1}}+\\frac{1}{x_{2}}+\\cdots+\\frac{1}{x_{n}}}\\\\G_{n}=\\sqrt[n]{\\prod\\limits_{i=1}^{n}x_{i}}=\\sqrt[n]{x_{1}x_{2}\\cdots x_{n}}\\\\A_{n}=\\frac{1}{n}\\sum\\limits_{i=1}^{n}x_{i}=\\frac{x_{1}+x_{2}+\\cdots+x_{n}}{n}\\\\Q_{n}=\\sqrt{\\sum\\limits_{i=1}^{n}x_{i}^{2}}=\\sqrt{\\frac{x_{1}^{2}+x_{2}^{2}+\\cdots+x_{n}^{2}}{n}}\\\\H_{n}\\leq G_{n}\\leq A_{n}\\leq Q_{n}\\end{array}' }
+    ]
+  },
+  "integration": {
+    icon: '\\frac{\\partial y}{\\partial x}',
+    formulas: [
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}x^n=nx^{n-1}', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}x^n=nx^{n-1}' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}e^{ax}=a\\,e^{ax}', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}e^{ax}=a\\,e^{ax}' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\ln(x)=\\frac{1}{x}', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\ln(x)=\\frac{1}{x}' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\sin x=\\cos x', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\sin x=\\cos x' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\cos x=-\\sin x', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\cos x=-\\sin x' },
+      { latex: '\\int k\\mathrm{d}x=kx+C', insertText: '\\int k\\mathrm{d}x=kx+C' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\tan x=\\sec^2x', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\tan x=\\sec^2x' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\cot x=-\\csc^2x', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}x}\\cot x=-\\csc^2x' },
+      { latex: '\\int\\frac{1}{x}\\mathrm{d}x=\\ln\\left|x\\right|+C', insertText: '\\int\\frac{1}{x}\\mathrm{d}x=\\ln\\left|x\\right|+C' },
+      { latex: '\\int\\frac{1}{\\sqrt{1-x^{2}}}\\mathrm{d}x=\\arcsin x+C', insertText: '\\int\\frac{1}{\\sqrt{1-x^{2}}}\\mathrm{d}x=\\arcsin x+C' },
+      { latex: '\\int\\frac{1}{1+x^{2}}\\mathrm{d}x=\\arctan x+C', insertText: '\\int\\frac{1}{1+x^{2}}\\mathrm{d}x=\\arctan x+C' },
+      { latex: '\\int u\\frac{\\mathrm{d}v}{\\mathrm{d}x}\\,\\mathrm{d}x=uv-\\int\\frac{\\mathrm{d}u}{\\mathrm{d}x}v\\,\\mathrm{d}x', insertText: '\\int u\\frac{\\mathrm{d}v}{\\mathrm{d}x}\\,\\mathrm{d}x=uv-\\int\\frac{\\mathrm{d}u}{\\mathrm{d}x}v\\,\\mathrm{d}x' },
+      { latex: 'f(x)=\\frac{1}{\\sqrt{2\\pi}}\\int_{-\\infty}^{\\infty}\\hat f(\\xi)e^{i\\xi x}\\mathrm{d}\\xi', insertText: 'f(x)=\\frac{1}{\\sqrt{2\\pi}}\\int_{-\\infty}^{\\infty}\\hat f(\\xi)e^{i\\xi x}\\mathrm{d}\\xi' },
+      { latex: '\\int x^{\\mu}\\mathrm{d}x=\\frac{x^{\\mu+1}}{\\mu+1}+C\\quad\\left(\\mu\\neq-1\\right)', insertText: '\\int x^{\\mu}\\mathrm{d}x=\\frac{x^{\\mu+1}}{\\mu+1}+C\\quad\\left(\\mu\\neq-1\\right)' }
+    ]
+  },
+  "matrix": {
+    icon: '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}',
+    formulas: [
+      { latex: '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}', insertText: '\\begin{pmatrix}1&0\\\\0&1\\end{pmatrix}' },
+      { latex: '\\begin{pmatrix}a_{11}&a_{12}&a_{13}\\\\a_{21}&a_{22}&a_{23}\\\\a_{31}&a_{32}&a_{33}\\end{pmatrix}', insertText: '\\begin{pmatrix}a_{11}&a_{12}&a_{13}\\\\a_{21}&a_{22}&a_{23}\\\\a_{31}&a_{32}&a_{33}\\end{pmatrix}' },
+      { latex: '\\begin{pmatrix}a_{11}&\\cdots&a_{1n}\\\\\\vdots&\\ddots&\\vdots\\\\a_{m1}&\\cdots&a_{mn}\\end{pmatrix}', insertText: '\\begin{pmatrix}a_{11}&\\cdots&a_{1n}\\\\\\vdots&\\ddots&\\vdots\\\\a_{m1}&\\cdots&a_{mn}\\end{pmatrix}' },
+      { latex: 'O=\\begin{bmatrix}0&0&\\cdots&0\\\\0&0&\\cdots&0\\\\\\vdots&\\vdots&\\ddots&\\vdots\\\\0&0&\\cdots&0\\end{bmatrix}', insertText: 'O=\\begin{bmatrix}0&0&\\cdots&0\\\\0&0&\\cdots&0\\\\\\vdots&\\vdots&\\ddots&\\vdots\\\\0&0&\\cdots&0\\end{bmatrix}' },
+      { latex: 'A_{m\\times n}=\\begin{bmatrix}a_{11}&a_{12}&\\cdots&a_{1n}\\\\a_{21}&a_{22}&\\cdots&a_{2n}\\\\\\vdots&\\vdots&\\ddots&\\vdots\\\\a_{m1}&a_{m2}&\\cdots&a_{mn}\\end{bmatrix}=\\left[a_{ij}\\right]', insertText: 'A_{m\\times n}=\\begin{bmatrix}a_{11}&a_{12}&\\cdots&a_{1n}\\\\a_{21}&a_{22}&\\cdots&a_{2n}\\\\\\vdots&\\vdots&\\ddots&\\vdots\\\\a_{m1}&a_{m2}&\\cdots&a_{mn}\\end{bmatrix}=\\left[a_{ij}\\right]' },
+      { latex: '\\begin{array}{c}A=\\left[a_{ij}\\right]_{m\\times n},B=\\left[b_{ij}\\right]_{n\\times s}\\\\c_{ij}=\\sum\\limits_{k=1}^{n}a_{ik}b_{kj}\\\\C=AB=\\left[c_{ij}\\right]_{m\\times s}=\\left[\\sum\\limits_{k=1}^{n}a_{ik}b_{kj}\\right]_{m\\times s}\\end{array}', insertText: '\\begin{array}{c}A=\\left[a_{ij}\\right]_{m\\times n},B=\\left[b_{ij}\\right]_{n\\times s}\\\\c_{ij}=\\sum\\limits_{k=1}^{n}a_{ik}b_{kj}\\\\C=AB=\\left[c_{ij}\\right]_{m\\times s}=\\left[\\sum\\limits_{k=1}^{n}a_{ik}b_{kj}\\right]_{m\\times s}\\end{array}' }
+    ]
+  },
+  "triangle": {
+    icon: 'e^{i\\theta}',
+    formulas: [
+      { latex: 'e^{i\\theta}', insertText: 'e^{i\\theta}' },
+      { latex: '\\text{sin}^{2}\\frac{\\alpha}{2}=\\frac{1-\\text{cos}\\alpha}{2}', insertText: '\\text{sin}^{2}\\frac{\\alpha}{2}=\\frac{1-\\text{cos}\\alpha}{2}' },
+      { latex: '\\text{cos}^{2}\\frac{\\alpha}{2}=\\frac{1+\\text{cos}\\alpha}{2}', insertText: '\\text{cos}^{2}\\frac{\\alpha}{2}=\\frac{1+\\text{cos}\\alpha}{2}' },
+      { latex: '\\text{tan}\\frac{\\alpha}{2}=\\frac{\\text{sin}\\alpha}{1+\\text{cos}\\alpha}', insertText: '\\text{tan}\\frac{\\alpha}{2}=\\frac{\\text{sin}\\alpha}{1+\\text{cos}\\alpha}' },
+      { latex: '\\sin\\alpha+\\sin\\beta=2\\sin\\frac{\\alpha+\\beta}{2}\\cos\\frac{\\alpha-\\beta}{2}', insertText: '\\sin\\alpha+\\sin\\beta=2\\sin\\frac{\\alpha+\\beta}{2}\\cos\\frac{\\alpha-\\beta}{2}' },
+      { latex: '\\sin\\alpha-\\sin\\beta=2\\cos\\frac{\\alpha+\\beta}{2}\\sin\\frac{\\alpha-\\beta}{2}', insertText: '\\sin\\alpha-\\sin\\beta=2\\cos\\frac{\\alpha+\\beta}{2}\\sin\\frac{\\alpha-\\beta}{2}' },
+      { latex: '\\cos\\alpha+\\cos\\beta=2\\cos\\frac{\\alpha+\\beta}{2}\\cos\\frac{\\alpha-\\beta}{2}', insertText: '\\cos\\alpha+\\cos\\beta=2\\cos\\frac{\\alpha+\\beta}{2}\\cos\\frac{\\alpha-\\beta}{2}' },
+      { latex: '\\cos\\alpha-\\cos\\beta=-2\\sin\\frac{\\alpha+\\beta}{2}\\sin\\frac{\\alpha-\\beta}{2}', insertText: '\\cos\\alpha-\\cos\\beta=-2\\sin\\frac{\\alpha+\\beta}{2}\\sin\\frac{\\alpha-\\beta}{2}' },
+      { latex: 'a^{2}=b^{2}+c^{2}-2bc\\cos A', insertText: 'a^{2}=b^{2}+c^{2}-2bc\\cos A' },
+      { latex: '\\frac{\\sin A}{a}=\\frac{\\sin B}{b}=\\frac{\\sin C}{c}=\\frac{1}{2R}', insertText: '\\frac{\\sin A}{a}=\\frac{\\sin B}{b}=\\frac{\\sin C}{c}=\\frac{1}{2R}' },
+      { latex: '\\sin\\left(\\frac{\\pi}{2}-\\alpha\\right)=\\cos\\alpha', insertText: '\\sin\\left(\\frac{\\pi}{2}-\\alpha\\right)=\\cos\\alpha' },
+      { latex: '\\sin\\left(\\frac{\\pi}{2}+\\alpha\\right)=\\cos\\alpha', insertText: '\\sin\\left(\\frac{\\pi}{2}+\\alpha\\right)=\\cos\\alpha' }
+    ]
+  },
+  "statistics": {
+    icon: 'C_{r}^{n}',
+    formulas: [
+      { latex: 'C_{r}^{n}', insertText: 'C_{r}^{n}' },
+      { latex: '\\frac{n!}{r!(n-r)!}', insertText: '\\frac{n!}{r!(n-r)!}' },
+      { latex: '\\sum_{i=1}^{n}{X_i}', insertText: '\\sum_{i=1}^{n}{X_i}' },
+      { latex: '\\sum_{i=1}^{n}{X_i^2}', insertText: '\\sum_{i=1}^{n}{X_i^2}' },
+      { latex: 'X_1,\\cdots,X_n', insertText: 'X_1,\\cdots,X_n' },
+      { latex: '\\frac{x-\\mu}{\\sigma}', insertText: '\\frac{x-\\mu}{\\sigma}' },
+      { latex: '\\sum_{i=1}^{n}{(X_i-\\overline{X})^2}', insertText: '\\sum_{i=1}^{n}{(X_i-\\overline{X})^2}' },
+      { latex: '\\begin{array}{c}\\text{If }P(AB)=P(A)P(B),\\\\\\text{then }P(A\\mid B)=P(A)\\end{array}', insertText: '\\begin{array}{c}\\text{If }P(AB)=P(A)P(B),\\\\\\text{then }P(A\\mid B)=P(A)\\end{array}' },
+      { latex: 'P(E)={n\\choose k}p^k(1-p)^{n-k}', insertText: 'P(E)={n\\choose k}p^k(1-p)^{n-k}' },
+      { latex: 'P\\left(A\\right)=\\lim\\limits_{n\\to\\infty}f_{n}\\left(A\\right)', insertText: 'P\\left(A\\right)=\\lim\\limits_{n\\to\\infty}f_{n}\\left(A\\right)' },
+      { latex: 'P\\left(\\bigcup\\limits_{i=1}^{+\\infty}A_{i}\\right)=\\prod\\limits_{i=1}^{+\\infty}P{\\left(A_{i}\\right)}', insertText: 'P\\left(\\bigcup\\limits_{i=1}^{+\\infty}A_{i}\\right)=\\prod\\limits_{i=1}^{+\\infty}P{\\left(A_{i}\\right)}' },
+      { latex: '\\begin{array}{c}P\\left(\\emptyset\\right)=0\\\\P\\left(S\\right)=1\\end{array}', insertText: '\\begin{array}{c}P\\left(\\emptyset\\right)=0\\\\P\\left(S\\right)=1\\end{array}' },
+      { latex: '\\begin{array}{c}\\forall A\\in S\\\\P\\left(A\\right)\\ge0\\end{array}', insertText: '\\begin{array}{c}\\forall A\\in S\\\\P\\left(A\\right)\\ge0\\end{array}' },
+      { latex: 'P\\left(\\bigcup\\limits_{i=1}^{n}A_{i}\\right)=\\prod\\limits_{i=1}^{n}P\\left(A_{i}\\right)', insertText: 'P\\left(\\bigcup\\limits_{i=1}^{n}A_{i}\\right)=\\prod\\limits_{i=1}^{n}P\\left(A_{i}\\right)' },
+      { latex: '\\begin{array}{c}S=\\binom{N}{n},A_{k}=\\binom{M}{k}\\cdot\\binom{N-M}{n-k}\\\\P\\left(A_{k}\\right)=\\frac{\\binom{M}{k}\\cdot\\binom{N-M}{n-k}}{\\binom{N}{n}}\\end{array}', insertText: '\\begin{array}{c}S=\\binom{N}{n},A_{k}=\\binom{M}{k}\\cdot\\binom{N-M}{n-k}\\\\P\\left(A_{k}\\right)=\\frac{\\binom{M}{k}\\cdot\\binom{N-M}{n-k}}{\\binom{N}{n}}\\end{array}' },
+      { latex: '\\begin{array}{c}P_{n}=n!\\\\A_{n}^{k}=\\frac{n!}{\\left(n-k\\right)!}\\end{array}', insertText: '\\begin{array}{c}P_{n}=n!\\\\A_{n}^{k}=\\frac{n!}{\\left(n-k\\right)!}\\end{array}' }
+    ]
+  },
+  "sequence": {
+    icon: 'a_{n}=2^{n}',
+    formulas: [
+      { latex: 'a_{n}=a_{1}q^{n-1}', insertText: 'a_{n}=a_{1}q^{n-1}' },
+      { latex: 'a_{n}=a_{1}+\\left(n-1\\right)d', insertText: 'a_{n}=a_{1}+\\left(n-1\\right)d' },
+      { latex: 'S_{n}=na_{1}+\\frac{n\\left(n-1\\right)}{2}d', insertText: 'S_{n}=na_{1}+\\frac{n\\left(n-1\\right)}{2}d' },
+      { latex: 'S_{n}=\\frac{n\\left(a_{1}+a_{n}\\right)}{2}', insertText: 'S_{n}=\\frac{n\\left(a_{1}+a_{n}\\right)}{2}' },
+      { latex: '\\frac{1}{n\\left(n+k\\right)}=\\frac{1}{k}\\left(\\frac{1}{n}-\\frac{1}{n+k}\\right)', insertText: '\\frac{1}{n\\left(n+k\\right)}=\\frac{1}{k}\\left(\\frac{1}{n}-\\frac{1}{n+k}\\right)' },
+      { latex: '\\frac{1}{n^{2}-1}=\\frac{1}{2}\\left(\\frac{1}{n-1}-\\frac{1}{n+1}\\right)', insertText: '\\frac{1}{n^{2}-1}=\\frac{1}{2}\\left(\\frac{1}{n-1}-\\frac{1}{n+1}\\right)' },
+      { latex: '\\frac{1}{4n^{2}-1}=\\frac{1}{2}\\left(\\frac{1}{2n-1}-\\frac{1}{2n+1}\\right)', insertText: '\\frac{1}{4n^{2}-1}=\\frac{1}{2}\\left(\\frac{1}{2n-1}-\\frac{1}{2n+1}\\right)' },
+      { latex: '\\frac{n+1}{n\\left(n-1\\right)\\cdot2^{n}}=\\frac{1}{\\left(n-1\\right)\\cdot2^{n-1}}-\\frac{1}{n\\cdot2^{n}}', insertText: '\\frac{n+1}{n\\left(n-1\\right)\\cdot2^{n}}=\\frac{1}{\\left(n-1\\right)\\cdot2^{n-1}}-\\frac{1}{n\\cdot2^{n}}' },
+      { latex: 'a_n=a+nd,\\quad b_n=b+ne\\quad\\Rightarrow\\quad a_n+b_n=(a+b)+n(d+e)', insertText: 'a_n=a+nd,\\quad b_n=b+ne\\quad\\Rightarrow\\quad a_n+b_n=(a+b)+n(d+e)' },
+      { latex: '(1+x)^{n}=1+\\frac{nx}{1!}+\\frac{n(n-1)x^{2}}{2!}+\\cdots', insertText: '(1+x)^{n}=1+\\frac{nx}{1!}+\\frac{n(n-1)x^{2}}{2!}+\\cdots' }
+    ]
+  },
+  "physics": {
+    icon: 'E=mc^{2}',
+    formulas: [
+      { latex: '\\vec{F}=m\\vec{a}', insertText: '\\vec{F}=m\\vec{a}' },
+      { latex: 'E_{\\mathrm{kin}}=\\frac{1}{2}mv^2', insertText: 'E_{\\mathrm{kin}}=\\frac{1}{2}mv^2' },
+      { latex: 'E_{\\mathrm{pot}}=mgh', insertText: 'E_{\\mathrm{pot}}=mgh' },
+      { latex: 'W=\\vec{F}\\cdot\\vec{s}=Fs\\cos\\theta', insertText: 'W=\\vec{F}\\cdot\\vec{s}=Fs\\cos\\theta' },
+      { latex: '\\vec{p}=m\\vec{v}', insertText: '\\vec{p}=m\\vec{v}' },
+      { latex: '\\vec{L}=\\vec{r}\\times\\vec{p}', insertText: '\\vec{L}=\\vec{r}\\times\\vec{p}' },
+      { latex: 'I=\\sum m_ir_i^2', insertText: 'I=\\sum m_ir_i^2' },
+      { latex: 'L=T-V', insertText: 'L=T-V' },
+      { latex: '\\frac{\\mathrm{d}}{\\mathrm{d}t}\\left(\\frac{\\partial L}{\\partial \\dot{q}_i}\\right)-\\frac{\\partial L}{\\partial q_i}=0', insertText: '\\frac{\\mathrm{d}}{\\mathrm{d}t}\\left(\\frac{\\partial L}{\\partial \\dot{q}_i}\\right)-\\frac{\\partial L}{\\partial q_i}=0' },
+      { latex: 'H=\\sum_i\\dot{q}_ip_i-L', insertText: 'H=\\sum_i\\dot{q}_ip_i-L' },
+      { latex: '\\begin{aligned}\\dot{q}_i&=\\frac{\\partial H}{\\partial p_i}\\\\\\dot{p}_i&=-\\frac{\\partial H}{\\partial q_i}\\end{aligned}', insertText: '\\begin{aligned}\\dot{q}_i&=\\frac{\\partial H}{\\partial p_i}\\\\\\dot{p}_i&=-\\frac{\\partial H}{\\partial q_i}\\end{aligned}' },
+      { latex: '\\{f,g\\}=\\sum_i\\left(\\frac{\\partial f}{\\partial q_i}\\frac{\\partial g}{\\partial p_i}-\\frac{\\partial f}{\\partial p_i}\\frac{\\partial g}{\\partial q_i}\\right)', insertText: '\\{f,g\\}=\\sum_i\\left(\\frac{\\partial f}{\\partial q_i}\\frac{\\partial g}{\\partial p_i}-\\frac{\\partial f}{\\partial p_i}\\frac{\\partial g}{\\partial q_i}\\right)' },
+      { latex: 'pV=nRT', insertText: 'pV=nRT' },
+      { latex: 'Q=mc\\Delta T', insertText: 'Q=mc\\Delta T' },
+      { latex: '\\Delta U=Q-W', insertText: '\\Delta U=Q-W' },
+      { latex: '\\Delta S=\\int\\frac{\\mathrm{d}Q}{T}', insertText: '\\Delta S=\\int\\frac{\\mathrm{d}Q}{T}' },
+      { latex: '\\eta=1-\\frac{T_{\\mathrm{C}}}{T_{\\mathrm{H}}}', insertText: '\\eta=1-\\frac{T_{\\mathrm{C}}}{T_{\\mathrm{H}}}' },
+      { latex: '\\oint\\frac{\\mathrm{d}Q}{T}\\leq0', insertText: '\\oint\\frac{\\mathrm{d}Q}{T}\\leq0' },
+      { latex: 'G=U+pV-TS', insertText: 'G=U+pV-TS' },
+      { latex: 'F=U-TS', insertText: 'F=U-TS' },
+      { latex: 'C_V=\\left(\\frac{\\partial U}{\\partial T}\\right)_V,\\quad C_p=\\left(\\frac{\\partial H}{\\partial T}\\right)_p', insertText: 'C_V=\\left(\\frac{\\partial U}{\\partial T}\\right)_V,\\quad C_p=\\left(\\frac{\\partial H}{\\partial T}\\right)_p' },
+      { latex: '\\left(\\frac{\\partial T}{\\partial V}\\right)_S=-\\left(\\frac{\\partial p}{\\partial S}\\right)_V', insertText: '\\left(\\frac{\\partial T}{\\partial V}\\right)_S=-\\left(\\frac{\\partial p}{\\partial S}\\right)_V' },
+      { latex: 'Z=\\sum_i e^{-\\beta E_i},\\quad \\beta=\\frac{1}{k_{\\mathrm{B}}T}', insertText: 'Z=\\sum_i e^{-\\beta E_i},\\quad \\beta=\\frac{1}{k_{\\mathrm{B}}T}' },
+      { latex: '\\langle E\\rangle=-\\frac{\\partial \\ln Z}{\\partial \\beta}', insertText: '\\langle E\\rangle=-\\frac{\\partial \\ln Z}{\\partial \\beta}' },
+      { latex: 'P_i=\\frac{e^{-\\beta E_i}}{Z}', insertText: 'P_i=\\frac{e^{-\\beta E_i}}{Z}' },
+      { latex: 'S=-k_{\\mathrm{B}}\\sum_i P_i\\ln P_i', insertText: 'S=-k_{\\mathrm{B}}\\sum_i P_i\\ln P_i' },
+      { latex: 'F=-k_{\\mathrm{B}}T\\ln Z', insertText: 'F=-k_{\\mathrm{B}}T\\ln Z' },
+      { latex: 'n_1\\sin\\theta_1=n_2\\sin\\theta_2', insertText: 'n_1\\sin\\theta_1=n_2\\sin\\theta_2' },
+      { latex: '\\Delta L=d\\sin\\theta=m\\lambda', insertText: '\\Delta L=d\\sin\\theta=m\\lambda' },
+      { latex: '\\delta\\int_A^B n(\\vec{r})\\,\\mathrm{d}\\ell=0', insertText: '\\delta\\int_A^B n(\\vec{r})\\,\\mathrm{d}\\ell=0' },
+      { latex: 'F=k_{\\mathrm{e}}\\frac{q_1 q_2}{r^2}', insertText: 'F=k_{\\mathrm{e}}\\frac{q_1 q_2}{r^2}' },
+      { latex: '\\vec{E}=\\frac{\\vec{F}}{q}', insertText: '\\vec{E}=\\frac{\\vec{F}}{q}' },
+      { latex: '\\Phi_E=\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{S}=\\frac{q_{\\mathrm{in}}}{\\varepsilon_0}', insertText: '\\Phi_E=\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{S}=\\frac{q_{\\mathrm{in}}}{\\varepsilon_0}' },
+      { latex: '\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{\\ell}=\\mu_0 I_{\\mathrm{in}}', insertText: '\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{\\ell}=\\mu_0 I_{\\mathrm{in}}' },
+      { latex: '\\mathcal{E}=-\\frac{\\mathrm{d}\\Phi_B}{\\mathrm{d}t}', insertText: '\\mathcal{E}=-\\frac{\\mathrm{d}\\Phi_B}{\\mathrm{d}t}' },
+      { latex: '\\begin{aligned}\\nabla\\cdot\\vec{E}&=\\frac{\\rho}{\\varepsilon_0}\\\\\\nabla\\cdot\\vec{B}&=0\\\\\\nabla\\times\\vec{E}&=-\\frac{\\partial \\vec{B}}{\\partial t}\\\\\\nabla\\times\\vec{B}&=\\mu_0\\vec{J}+\\mu_0\\varepsilon_0\\frac{\\partial \\vec{E}}{\\partial t}\\end{aligned}', insertText: '\\begin{aligned}\\nabla\\cdot\\vec{E}&=\\frac{\\rho}{\\varepsilon_0}\\\\\\nabla\\cdot\\vec{B}&=0\\\\\\nabla\\times\\vec{E}&=-\\frac{\\partial \\vec{B}}{\\partial t}\\\\\\nabla\\times\\vec{B}&=\\mu_0\\vec{J}+\\mu_0\\varepsilon_0\\frac{\\partial \\vec{E}}{\\partial t}\\end{aligned}' },
+      { latex: '\\begin{aligned}&\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{S}=\\frac{Q_{\\mathrm{in}}}{\\varepsilon_0}\\\\&\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{S}=0\\\\&\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{\\ell}=-\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int \\vec{B}\\cdot\\mathrm{d}\\vec{S}\\\\&\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{\\ell}=\\mu_0\\left(I+\\varepsilon_0\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int \\vec{E}\\cdot\\mathrm{d}\\vec{S}\\right)\\end{aligned}', insertText: '\\begin{aligned}&\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{S}=\\frac{Q_{\\mathrm{in}}}{\\varepsilon_0}\\\\&\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{S}=0\\\\&\\oint \\vec{E}\\cdot\\mathrm{d}\\vec{\\ell}=-\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int \\vec{B}\\cdot\\mathrm{d}\\vec{S}\\\\&\\oint \\vec{B}\\cdot\\mathrm{d}\\vec{\\ell}=\\mu_0\\left(I+\\varepsilon_0\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int \\vec{E}\\cdot\\mathrm{d}\\vec{S}\\right)\\end{aligned}' },
+      { latex: '\\begin{aligned}\\nabla\\cdot\\vec{D}&=\\rho_{\\mathrm{f}}\\\\\\nabla\\cdot\\vec{B}&=0\\\\\\nabla\\times\\vec{E}&=-\\frac{\\partial \\vec{B}}{\\partial t}\\\\\\nabla\\times\\vec{H}&=\\vec{J}_{\\mathrm{f}}+\\frac{\\partial \\vec{D}}{\\partial t}\\end{aligned}', insertText: '\\begin{aligned}\\nabla\\cdot\\vec{D}&=\\rho_{\\mathrm{f}}\\\\\\nabla\\cdot\\vec{B}&=0\\\\\\nabla\\times\\vec{E}&=-\\frac{\\partial \\vec{B}}{\\partial t}\\\\\\nabla\\times\\vec{H}&=\\vec{J}_{\\mathrm{f}}+\\frac{\\partial \\vec{D}}{\\partial t}\\end{aligned}' },
+      { latex: '\\begin{aligned}\\oint_{\\partial V}\\vec{D}\\cdot\\mathrm{d}\\vec{S}&=Q_{\\mathrm{f,in}}\\\\\\oint_{\\partial V}\\vec{B}\\cdot\\mathrm{d}\\vec{S}&=0\\\\\\oint_{\\partial S}\\vec{E}\\cdot\\mathrm{d}\\vec{\\ell}&=-\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int_S\\vec{B}\\cdot\\mathrm{d}\\vec{S}\\\\\\oint_{\\partial S}\\vec{H}\\cdot\\mathrm{d}\\vec{\\ell}&=I_{\\mathrm{f}}+\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int_S\\vec{D}\\cdot\\mathrm{d}\\vec{S}\\end{aligned}', insertText: '\\begin{aligned}\\oint_{\\partial V}\\vec{D}\\cdot\\mathrm{d}\\vec{S}&=Q_{\\mathrm{f,in}}\\\\\\oint_{\\partial V}\\vec{B}\\cdot\\mathrm{d}\\vec{S}&=0\\\\\\oint_{\\partial S}\\vec{E}\\cdot\\mathrm{d}\\vec{\\ell}&=-\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int_S\\vec{B}\\cdot\\mathrm{d}\\vec{S}\\\\\\oint_{\\partial S}\\vec{H}\\cdot\\mathrm{d}\\vec{\\ell}&=I_{\\mathrm{f}}+\\frac{\\mathrm{d}}{\\mathrm{d}t}\\int_S\\vec{D}\\cdot\\mathrm{d}\\vec{S}\\end{aligned}' },
+      { latex: 'E_n=-\\frac{13.6\\,\\mathrm{eV}}{n^2},\\quad n=1,2,3,\\ldots', insertText: 'E_n=-\\frac{13.6\\,\\mathrm{eV}}{n^2},\\quad n=1,2,3,\\ldots' },
+      { latex: 'E=h\\nu=\\frac{hc}{\\lambda}', insertText: 'E=h\\nu=\\frac{hc}{\\lambda}' },
+      { latex: '\\lambda=\\frac{h}{p}', insertText: '\\lambda=\\frac{h}{p}' },
+      { latex: '\\hat{H}\\psi=E\\psi', insertText: '\\hat{H}\\psi=E\\psi' },
+      { latex: 'i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\vec{r},t)=\\hat{H}\\Psi(\\vec{r},t)', insertText: 'i\\hbar\\frac{\\partial}{\\partial t}\\Psi(\\vec{r},t)=\\hat{H}\\Psi(\\vec{r},t)' },
+      { latex: '\\Delta x\\,\\Delta p\\geq\\frac{\\hbar}{2}', insertText: '\\Delta x\\,\\Delta p\\geq\\frac{\\hbar}{2}' },
+      { latex: '\\langle A\\rangle=\\langle\\psi|\\hat{A}|\\psi\\rangle', insertText: '\\langle A\\rangle=\\langle\\psi|\\hat{A}|\\psi\\rangle' },
+      { latex: '(i\\gamma^\\mu\\partial_\\mu-m)\\psi=0', insertText: '(i\\gamma^\\mu\\partial_\\mu-m)\\psi=0' },
+      { latex: '\\mathcal{L}=\\frac{1}{2}\\partial^\\mu\\phi\\partial_\\mu\\phi-\\frac{1}{2}m^2\\phi^2', insertText: '\\mathcal{L}=\\frac{1}{2}\\partial^\\mu\\phi\\partial_\\mu\\phi-\\frac{1}{2}m^2\\phi^2' },
+      { latex: '\\mathcal{L}=\\bar{\\psi}(i\\gamma^\\mu\\partial_\\mu-m)\\psi', insertText: '\\mathcal{L}=\\bar{\\psi}(i\\gamma^\\mu\\partial_\\mu-m)\\psi' },
+      { latex: 'F_{\\mu\\nu}=\\partial_\\mu A_\\nu-\\partial_\\nu A_\\mu', insertText: 'F_{\\mu\\nu}=\\partial_\\mu A_\\nu-\\partial_\\nu A_\\mu' },
+      { latex: '\\tilde{F}^{\\mu\\nu}=\\frac{1}{2}\\varepsilon^{\\mu\\nu\\rho\\sigma}F_{\\rho\\sigma}', insertText: '\\tilde{F}^{\\mu\\nu}=\\frac{1}{2}\\varepsilon^{\\mu\\nu\\rho\\sigma}F_{\\rho\\sigma}' },
+      { latex: '\\boxed{\\begin{aligned}\\partial^\\mu F_{\\mu\\nu}&=\\mu_0 J_\\nu\\\\\\partial^\\mu\\tilde{F}_{\\mu\\nu}&=0\\end{aligned}}', insertText: '\\boxed{\\begin{aligned}\\partial^\\mu F_{\\mu\\nu}&=\\mu_0 J_\\nu\\\\\\partial^\\mu\\tilde{F}_{\\mu\\nu}&=0\\end{aligned}}' },
+      { latex: '\\mathcal{L}=-\\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}-J^\\mu A_\\mu', insertText: '\\mathcal{L}=-\\frac{1}{4}F_{\\mu\\nu}F^{\\mu\\nu}-J^\\mu A_\\mu' },
+      { latex: '\\frac{\\partial\\rho}{\\partial t}+\\nabla\\cdot(\\rho\\vec{v})=0', insertText: '\\frac{\\partial\\rho}{\\partial t}+\\nabla\\cdot(\\rho\\vec{v})=0' },
+      { latex: '\\rho\\left(\\frac{\\partial\\vec{v}}{\\partial t}+\\vec{v}\\cdot\\nabla\\vec{v}\\right)=-\\nabla p+\\rho\\vec{g}', insertText: '\\rho\\left(\\frac{\\partial\\vec{v}}{\\partial t}+\\vec{v}\\cdot\\nabla\\vec{v}\\right)=-\\nabla p+\\rho\\vec{g}' },
+      { latex: '\\rho\\left(\\frac{\\partial\\vec{v}}{\\partial t}+\\vec{v}\\cdot\\nabla\\vec{v}\\right)=-\\nabla p+\\mu\\nabla^2\\vec{v}+\\rho\\vec{g}', insertText: '\\rho\\left(\\frac{\\partial\\vec{v}}{\\partial t}+\\vec{v}\\cdot\\nabla\\vec{v}\\right)=-\\nabla p+\\mu\\nabla^2\\vec{v}+\\rho\\vec{g}' },
+      { latex: 's^2=-c^2t^2+x^2+y^2+z^2', insertText: 's^2=-c^2t^2+x^2+y^2+z^2' },
+      { latex: '\\gamma=\\frac{1}{\\sqrt{1-\\dfrac{v^2}{c^2}}}', insertText: '\\gamma=\\frac{1}{\\sqrt{1-\\dfrac{v^2}{c^2}}}' },
+      { latex: '\\vec{p}=\\gamma m\\vec{v}', insertText: '\\vec{p}=\\gamma m\\vec{v}' },
+      { latex: 'E^2=p^2c^2+m^2c^4', insertText: 'E^2=p^2c^2+m^2c^4' },
+      { latex: 'R_{\\mu\\nu}-\\frac{1}{2}Rg_{\\mu\\nu}+\\Lambda g_{\\mu\\nu}=\\frac{8\\pi G}{c^4}T_{\\mu\\nu}', insertText: 'R_{\\mu\\nu}-\\frac{1}{2}Rg_{\\mu\\nu}+\\Lambda g_{\\mu\\nu}=\\frac{8\\pi G}{c^4}T_{\\mu\\nu}' },
+      { latex: '\\mathrm{d}s^2=-\\left(1-\\frac{2GM}{rc^2}\\right)c^2\\mathrm{d}t^2+\\left(1-\\frac{2GM}{rc^2}\\right)^{-1}\\mathrm{d}r^2+r^2\\mathrm{d}\\theta^2+r^2\\sin^2\\theta\\,\\mathrm{d}\\phi^2', insertText: '\\mathrm{d}s^2=-\\left(1-\\frac{2GM}{rc^2}\\right)c^2\\mathrm{d}t^2+\\left(1-\\frac{2GM}{rc^2}\\right)^{-1}\\mathrm{d}r^2+r^2\\mathrm{d}\\theta^2+r^2\\sin^2\\theta\\,\\mathrm{d}\\phi^2' },
+      { latex: '\\mathrm{d}s^2=g_{\\mu\\nu}\\,\\mathrm{d}x^\\mu\\mathrm{d}x^\\nu', insertText: '\\mathrm{d}s^2=g_{\\mu\\nu}\\,\\mathrm{d}x^\\mu\\mathrm{d}x^\\nu' },
+      { latex: '\\frac{\\mathrm{d}^2x^\\mu}{\\mathrm{d}\\tau^2}+\\Gamma^{\\mu}_{\\nu\\rho}\\frac{\\mathrm{d}x^\\nu}{\\mathrm{d}\\tau}\\frac{\\mathrm{d}x^\\rho}{\\mathrm{d}\\tau}=0', insertText: '\\frac{\\mathrm{d}^2x^\\mu}{\\mathrm{d}\\tau^2}+\\Gamma^{\\mu}_{\\nu\\rho}\\frac{\\mathrm{d}x^\\nu}{\\mathrm{d}\\tau}\\frac{\\mathrm{d}x^\\rho}{\\mathrm{d}\\tau}=0' }
+    ]
+  },
+  "chemistry": {
+    icon: 'H_{2}O',
+    formulas: [
+      { latex: '\\ce{SO4^2- + Ba^2+ -> BaSO4 v}', insertText: '\\ce{SO4^2- + Ba^2+ -> BaSO4 v}' },
+      { latex: '\\ce{CaCO3 (s) <=> CaO (s) + CO2 (g)}', insertText: '\\ce{CaCO3 (s) <=> CaO (s) + CO2 (g)}' },
+      { latex: '\\ce{Hg^2+ ->[I-]  \\underset{\\mathrm{red}}{\\ce{HgI2}}  ->[I-]  \\underset{\\mathrm{red}}{\\ce{[Hg^{II}I4]^2-}}}', insertText: '\\ce{Hg^2+ ->[I-]  \\underset{\\mathrm{red}}{\\ce{HgI2}}  ->[I-]  \\underset{\\mathrm{red}}{\\ce{[Hg^{II}I4]^2-}}}' },
+      { latex: '\\ce{Zn^2+  <=>[+ 2OH-][+ 2H+]  \\underset{\\text{amphoteres Hydroxid}}{\\ce{Zn(OH)2 v}}  <=>[+ 2OH-][+ 2H+]  \\underset{\\text{Hydroxozikat}}{\\ce{[Zn(OH)4]^2-}}}', insertText: '\\ce{Zn^2+  <=>[+ 2OH-][+ 2H+]  \\underset{\\text{amphoteres Hydroxid}}{\\ce{Zn(OH)2 v}}  <=>[+ 2OH-][+ 2H+]  \\underset{\\text{Hydroxozikat}}{\\ce{[Zn(OH)4]^2-}}}' },
+      { latex: '\\ce{HCl + NaOH -> NaCl + H2O}', insertText: '\\ce{HCl + NaOH -> NaCl + H2O}' },
+      { latex: '\\ce{Zn + Cu^2+ -> Zn^2+ + Cu}', insertText: '\\ce{Zn + Cu^2+ -> Zn^2+ + Cu}' },
+      { latex: '\\ce{CH3COOH <=> CH3COO^- + H^+}', insertText: '\\ce{CH3COOH <=> CH3COO^- + H^+}' },
+      { latex: '\\ce{Na2CO3 + 2HCl -> 2NaCl + CO2 ^ + H2O}', insertText: '\\ce{Na2CO3 + 2HCl -> 2NaCl + CO2 ^ + H2O}' },
+      { latex: '\\ce{2H2O2 ->[MnO2] 2H2O + O2 ^}', insertText: '\\ce{2H2O2 ->[MnO2] 2H2O + O2 ^}' },
+      { latex: '\\ce{2SO2 + O2 <=>[\\ce{V2O5}] 2SO3}', insertText: '\\ce{2SO2 + O2 <=>[\\ce{V2O5}] 2SO3}' }
+    ]
+  }
+};
+
+// Group Definitions
+const groups = {
+  "basic":{
+    icon: '\\begin{matrix}+&\\approx\\\\\\to&\\because\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\+', insertText: '\+' },
+      { latex: '\-', insertText: '\-' },
+      { latex: '\\times', insertText: '\\times' },
+      { latex: '\\div', insertText: '\\div' },
+      { latex: '\\triangleleft', insertText: '\\triangleleft' },
+      { latex: '\\triangleright', insertText: '\\triangleright' },
+      { latex: '\\cdot', insertText: '\\cdot' },
+      { latex: '\\setminus', insertText: '\\setminus' },
+      { latex: '\\star', insertText: '\\star' },
+      { latex: '\\ast', insertText: '\\ast' },
+      { latex: '\\cup', insertText: '\\cup' },
+      { latex: '\\cap', insertText: '\\cap' },
+      { latex: '\\varnothing', insertText: '\\varnothing' },
+      { latex: '\\%', insertText: '\\%' },
+      { latex: '\\sqcup', insertText: '\\sqcup' },
+      { latex: '\\sqcap', insertText: '\\sqcap' },
+      { latex: '\\vee', insertText: '\\vee' },
+      { latex: '\\wedge', insertText: '\\wedge' },
+      { latex: '\\circ', insertText: '\\circ' },
+      { latex: '\\bullet', insertText: '\\bullet' },
+      { latex: '\\oplus', insertText: '\\oplus' },
+      { latex: '\\ominus', insertText: '\\ominus' },
+      { latex: '\\odot', insertText: '\\odot' },
+      { latex: '\\oslash', insertText: '\\oslash' },
+      { latex: '\\otimes', insertText: '\\otimes' },
+      { latex: '\\bigcirc', insertText: '\\bigcirc' },
+      { latex: '\\diamond', insertText: '\\diamond' },
+      { latex: '\\uplus', insertText: '\\uplus' },
+      { latex: '\\bigtriangleup', insertText: '\\bigtriangleup' },
+      { latex: '\\bigtriangledown', insertText: '\\bigtriangledown' },
+      { latex: '\\lhd', insertText: '\\lhd' },
+      { latex: '\\rhd', insertText: '\\rhd' },
+      { latex: '\\unlhd', insertText: '\\unlhd' },
+      { latex: '\\unrhd', insertText: '\\unrhd' },
+      { latex: '\\amalg', insertText: '\\amalg' },
+      { latex: '\\wr', insertText: '\\wr' },
+      { latex: '\\dagger', insertText: '\\dagger' },
+      { latex: '\\ddagger', insertText: '\\ddagger' },
+      //part2
+      { latex: '<', insertText: '<' },
+      { latex: '>', insertText: '>' },
+      { latex: '=', insertText: '=' },
+      { latex: '\\le', insertText: '\\le' },
+      { latex: '\\ge', insertText: '\\ge' },
+      { latex: '\\equiv', insertText: '\\equiv' },
+      { latex: '\\ll', insertText: '\\ll' },
+      { latex: '\\gg', insertText: '\\gg' },
+      { latex: '\\doteq', insertText: '\\doteq' },
+      { latex: '\\prec', insertText: '\\prec' },
+      { latex: '\\succ', insertText: '\\succ' },
+      { latex: '\\sim', insertText: '\\sim' },
+      { latex: '\\preceq', insertText: '\\preceq' },
+      { latex: '\\succeq', insertText: '\\succeq' },
+      { latex: '\\simeq', insertText: '\\simeq' },
+      { latex: '\\approx', insertText: '\\approx' },
+      { latex: '\\subset', insertText: '\\subset' },
+      { latex: '\\supset', insertText: '\\supset' },
+      { latex: '\\subseteq', insertText: '\\subseteq' },
+      { latex: '\\supseteq', insertText: '\\supseteq' },
+      { latex: '\\sqsubset', insertText: '\\sqsubset' },
+      { latex: '\\sqsupset', insertText: '\\sqsupset' },
+      { latex: '\\sqsubseteq', insertText: '\\sqsubseteq' },
+      { latex: '\\sqsupseteq', insertText: '\\sqsupseteq' },
+      { latex: '\\cong', insertText: '\\cong' },
+      { latex: '\\Join', insertText: '\\Join' },
+      { latex: '\\bowtie', insertText: '\\bowtie' },
+      { latex: '\\propto', insertText: '\\propto' },
+      { latex: '\\in', insertText: '\\in' },
+      { latex: '\\ni', insertText: '\\ni' },
+      { latex: '\\vdash', insertText: '\\vdash' },
+      { latex: '\\dashv', insertText: '\\dashv' },
+      { latex: '\\models', insertText: '\\models' },
+      { latex: '\\mid', insertText: '\\mid' },
+      { latex: '\\parallel', insertText: '\\parallel' },
+      { latex: '\\perp', insertText: '\\perp' },
+      { latex: '\\smile', insertText: '\\smile' },
+      { latex: '\\frown', insertText: '\\frown' },
+      { latex: '\\asymp', insertText: '\\asymp' },
+      { latex: '\\notin', insertText: '\\notin' },
+      { latex: '\\ne', insertText: '\\ne' },
+      //part3
+      { latex: '\\gets', insertText: '\\gets' },
+      { latex: '\\to', insertText: '\\to' },
+      { latex: '\\longleftarrow', insertText: '\\longleftarrow' },
+      { latex: '\\longrightarrow', insertText: '\\longrightarrow' },
+      { latex: '\\uparrow', insertText: '\\uparrow' },
+      { latex: '\\downarrow', insertText: '\\downarrow' },
+      { latex: '\\updownarrow', insertText: '\\updownarrow' },
+      { latex: '\\leftrightarrow', insertText: '\\leftrightarrow' },
+      { latex: '\\Uparrow', insertText: '\\Uparrow' },
+      { latex: '\\Downarrow', insertText: '\\Downarrow' },
+      { latex: '\\Updownarrow', insertText: '\\Updownarrow' },
+      { latex: '\\longleftrightarrow', insertText: '\\longleftrightarrow' },
+      { latex: '\\Leftarrow', insertText: '\\Leftarrow' },
+      { latex: '\\Longleftarrow', insertText: '\\Longleftarrow' },
+      { latex: '\\Rightarrow', insertText: '\\Rightarrow' },
+      { latex: '\\Longrightarrow', insertText: '\\Longrightarrow' },
+      { latex: '\\Leftrightarrow', insertText: '\\Leftrightarrow' },
+      { latex: '\\Longleftrightarrow', insertText: '\\Longleftrightarrow' },
+      { latex: '\\mapsto', insertText: '\\mapsto' },
+      { latex: '\\longmapsto', insertText: '\\longmapsto' },
+      { latex: '\\nearrow', insertText: '\\nearrow' },
+      { latex: '\\searrow', insertText: '\\searrow' },
+      { latex: '\\swarrow', insertText: '\\swarrow' },
+      { latex: '\\nwarrow', insertText: '\\nwarrow' },
+      { latex: '\\hookleftarrow', insertText: '\\hookleftarrow' },
+      { latex: '\\hookrightarrow', insertText: '\\hookrightarrow' },
+      { latex: '\\rightleftharpoons', insertText: '\\rightleftharpoons' },
+      { latex: '\\iff', insertText: '\\iff' },
+      { latex: '\\leftharpoonup', insertText: '\\leftharpoonup' },
+      { latex: '\\rightharpoonup', insertText: '\\rightharpoonup' },
+      { latex: '\\leftharpoondown', insertText: '\\leftharpoondown' },
+      { latex: '\\rightharpoondown', insertText: '\\rightharpoondown' },
+      //part4
+      { latex: '\\because', insertText: '\\because' },
+      { latex: '\\therefore', insertText: '\\therefore' },
+      { latex: '\\dots', insertText: '\\dots' },
+      { latex: '\\cdots', insertText: '\\cdots' },
+      { latex: '\\vdots', insertText: '\\vdots' },
+      { latex: '\\ddots', insertText: '\\ddots' },
+      { latex: '\\forall', insertText: '\\forall' },
+      { latex: '\\exists', insertText: '\\exists' },
+      { latex: '\\nexists', insertText: '\\nexists' },
+      { latex: '\\Finv', insertText: '\\Finv' },
+      { latex: '\\neg', insertText: '\\neg' },
+      { latex: '\\prime', insertText: '\\prime' },
+      { latex: '\\emptyset', insertText: '\\emptyset' },
+      { latex: '\\infty', insertText: '\\infty' },
+      { latex: '\\nabla', insertText: '\\nabla' },
+      { latex: '\\triangle', insertText: '\\triangle' },
+      { latex: '\\Box', insertText: '\\Box' },
+      { latex: '\\Diamond', insertText: '\\Diamond' },
+      { latex: '\\bot', insertText: '\\bot' },
+      { latex: '\\top', insertText: '\\top' },
+      { latex: '\\angle', insertText: '\\angle' },
+      { latex: '\\measuredangle', insertText: '\\measuredangle' },
+      { latex: '\\sphericalangle', insertText: '\\sphericalangle' },
+      { latex: '\\surd', insertText: '\\surd' },
+      { latex: '\\diamondsuit', insertText: '\\diamondsuit' },
+      { latex: '\\heartsuit', insertText: '\\heartsuit' },
+      { latex: '\\clubsuit', insertText: '\\clubsuit' },
+      { latex: '\\spadesuit', insertText: '\\spadesuit' },
+      { latex: '\\flat', insertText: '\\flat' },
+      { latex: '\\natural', insertText: '\\natural' },
+      { latex: '\\sharp', insertText: '\\sharp' }
+    ]
+  },
+  "letter": {
+    icon: '\\begin{matrix}\\alpha&\\beta\\\\\\gamma&\\delta\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\alpha', insertText: '\\alpha' },
+      { latex: '\\beta', insertText: '\\beta' },
+      { latex: '\\gamma', insertText: '\\gamma' },
+      { latex: '\\delta', insertText: '\\delta' },
+      { latex: '\\epsilon', insertText: '\\epsilon' },
+      { latex: '\\varepsilon', insertText: '\\varepsilon' },
+      { latex: '\\zeta', insertText: '\\zeta' },
+      { latex: '\\eta', insertText: '\\eta' },
+      { latex: '\\theta', insertText: '\\theta' },
+      { latex: '\\vartheta', insertText: '\\vartheta' },
+      { latex: '\\iota', insertText: '\\iota' },
+      { latex: '\\kappa', insertText: '\\kappa' },
+      { latex: '\\lambda', insertText: '\\lambda' },
+      { latex: '\\mu', insertText: '\\mu' },
+      { latex: '\\nu', insertText: '\\nu' },
+      { latex: '\\xi', insertText: '\\xi' },
+      { latex: 'o', insertText: 'o' },
+      { latex: '\\pi', insertText: '\\pi' },
+      { latex: '\\varpi', insertText: '\\varpi' },
+      { latex: '\\rho', insertText: '\\rho' },
+      { latex: '\\varrho', insertText: '\\varrho' },
+      { latex: '\\sigma', insertText: '\\sigma' },
+      { latex: '\\varsigma', insertText: '\\varsigma' },
+      { latex: '\\tau', insertText: '\\tau' },
+      { latex: '\\upsilon', insertText: '\\upsilon' },
+      { latex: '\\phi', insertText: '\\phi' },
+      { latex: '\\varphi', insertText: '\\varphi' },
+      { latex: '\\chi', insertText: '\\chi' },
+      { latex: '\\psi', insertText: '\\psi' },
+      { latex: '\\omega', insertText: '\\omega' },
+      //part2
+      { latex: '\\Gamma', insertText: '\\Gamma' },
+      { latex: '\\Delta', insertText: '\\Delta' },
+      { latex: '\\Theta', insertText: '\\Theta' },
+      { latex: '\\Lambda', insertText: '\\Lambda' },
+      { latex: '\\Xi', insertText: '\\Xi' },
+      { latex: '\\Pi', insertText: '\\Pi' },
+      { latex: '\\Sigma', insertText: '\\Sigma' },
+      { latex: '\\Upsilon', insertText: '\\Upsilon' },
+      { latex: '\\Phi', insertText: '\\Phi' },
+      { latex: '\\Psi', insertText: '\\Psi' },
+      { latex: '\\Omega', insertText: '\\Omega' },
+      //part3
+      { latex: '\\hbar', insertText: '\\hbar' },
+      { latex: '\\imath', insertText: '\\imath' },
+      { latex: '\\jmath', insertText: '\\jmath' },
+      { latex: '\\ell', insertText: '\\ell' },
+      { latex: '\\Re', insertText: '\\Re' },
+      { latex: '\\Im', insertText: '\\Im' },
+      { latex: '\\aleph', insertText: '\\aleph' },
+      { latex: '\\beth', insertText: '\\beth' },
+      { latex: '\\gimel', insertText: '\\gimel' },
+      { latex: '\\daleth', insertText: '\\daleth' },
+      { latex: '\\wp', insertText: '\\wp' },
+      { latex: '\\mho', insertText: '\\mho' },
+      { latex: '\\backepsilon', insertText: '\\backepsilon' },
+      { latex: '\\partial', insertText: '\\partial' },
+      { latex: '\\eth', insertText: '\\eth' },
+      { latex: '\\Bbbk', insertText: '\\Bbbk' },
+      { latex: '\\complement', insertText: '\\complement' },
+      { latex: '\\circledS', insertText: '\\circledS' },
+      { latex: '\\S', insertText: '\\S' }
+    ]
+  },
+  "frac": {
+    icon: '\\begin{matrix}\\frac{a}{b}&\\dot{x}\\\\{f}\'&\\bmod\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\frac{a}{b}', insertText: '\\frac{}{}' },
+      { latex: 'x\\tfrac{a}{b}', insertText: 'x\\tfrac{}{}' },
+      { latex: '\\mathrm{d}t', insertText: '\\mathrm{d}t' },
+      { latex: '\\frac{\\mathrm{d}y}{\\mathrm{d}x}', insertText: '\\frac{\\mathrm{d}y}{\\mathrm{d}x}' },
+      { latex: '\\partial t', insertText: '\\partial t' },
+      { latex: '\\frac{\\partial y}{\\partial x}', insertText: '\\frac{\\partial y}{\\partial x}' },
+      { latex: '\\nabla\\psi', insertText: '\\nabla\\psi' },
+      { latex: '\\frac{\\partial^2}{\\partial x_1\\partial x_2}y', insertText: '\\frac{\\partial^2}{\\partial x_1\\partial x_2}y' },
+      { latex: '\\cfrac{1}{a+\\cfrac{7}{b+\\cfrac{2}{9}}}=c', insertText: '\\cfrac{1}{a+\\cfrac{7}{b+\\cfrac{2}{9}}}=c' },
+      { latex: 'x=a_0+\\cfrac{1}{a_1+\\cfrac{1}{a_2+\\cfrac{1}{a_3+\\cfrac{1}{a_4}}}}', insertText: 'x=a_0+\\cfrac{1}{a_1+\\cfrac{1}{a_2+\\cfrac{1}{a_3+\\cfrac{1}{a_4}}}}' },
+      //part2
+      { latex: '\\dot{x}', insertText: '\\dot{}' },
+      { latex: '\\ddot{x}', insertText: '\\ddot{}' },
+      { latex: '{f}\'', insertText: '{f}\\\'' },
+      { latex: '{f}\'\'', insertText: '{f}\\\'\\\'' },
+      { latex: '{f}^{(n)}', insertText: '{f}^{()}' },
+      //part3
+      { latex: 'a\\bmod b', insertText: 'a\\bmod b' },
+      { latex: 'a\\equiv b\\pmod{m}', insertText: 'a\\equiv b\\pmod{m}' },
+      { latex: '\\gcd(m,n)', insertText: '\\gcd(m,n)' },
+      { latex: '\\operatorname{lcm}(m,n)', insertText: '\\operatorname{lcm}(m,n)' }
+    ]
+  },
+  "vec": {
+    icon: '\\begin{matrix}\\sqrt{x}&x^{a}\\\\\\hat{a}&\\vec{a}\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\sqrt{x}', insertText: '\\sqrt{}' },
+      { latex: '\\sqrt[n]{x}', insertText: '\\sqrt[]{}' },
+      //part2
+      { latex: 'x^{a}', insertText: 'x^{}' },
+      { latex: 'x_{a}', insertText: 'x_{}' },
+      { latex: 'x_{a}^{b}', insertText: 'x_{}^{}' },
+      { latex: '{_{a}^{b}}x', insertText: '{_{}^{}}x' },
+      { latex: '{_a^b}x_c^d', insertText: '{_{}^{}}x_{}^{}' },
+      { latex: '\\overset{u}{\\underset{d}{{_{a}^{b}}x_{e}^{f}}}', insertText: '\\overset{u}{\\underset{d}{{_{a}^{b}}x_{e}^{f}}}' },
+      //part3
+      { latex: '\\hat{a}', insertText: '\\hat{}' },
+      { latex: '\\check{a}', insertText: '\\check{}' },
+      { latex: '\\grave{a}', insertText: '\\grave{}' },
+      { latex: '\\acute{a}', insertText: '\\acute{}' },
+      { latex: '\\tilde{a}', insertText: '\\tilde{}' },
+      { latex: '\\breve{a}', insertText: '\\breve{}' },
+      { latex: '\\bar{a}', insertText: '\\bar{}' },
+      { latex: '\\vec{a}', insertText: '\\vec{}' },
+      { latex: '\\not{a}', insertText: '\\not{}' },
+      { latex: 'p\\mkern-9.5mu/', insertText: 'p\\mkern-9.5mu/' },
+      { latex: '37^{\\circ}', insertText: '37^{\\circ}' },
+      { latex: '\\widetilde{abc}', insertText: '\\widetilde{}' },
+      { latex: '\\widehat{abc}', insertText: '\\widehat{}' },
+      { latex: '\\overleftarrow{abc}', insertText: '\\overleftarrow{}' },
+      { latex: '\\overrightarrow{abc}', insertText: '\\overrightarrow{}' },
+      { latex: '\\overline{abc}', insertText: '\\overline{}' },
+      { latex: '\\underline{abc}', insertText: '\\underline{}' },
+      { latex: '\\overbrace{abc}', insertText: '\\overbrace{}' },
+      { latex: '\\underbrace{abc}', insertText: '\\underbrace{}' },
+      { latex: '\\overset{a}{abc}', insertText: '\\overset{}{}' },
+      { latex: '\\underset{a}{abc}', insertText: '\\underset{}{}' },
+      { latex: '\\stackrel\\frown{AB}', insertText: '\\stackrel\\frown{}' },
+      { latex: '\\overleftrightarrow{AB}', insertText: '\\overleftrightarrow{}' },
+      { latex: '\\overset{a}{\\leftarrow}', insertText: '\\overset{}{}' },
+      { latex: '\\overset{a}{\\rightarrow}', insertText: '\\overset{}{}' },
+      { latex: '\\xleftarrow[abc]{a}', insertText: '\\xleftarrow[abc]{a}' },
+      { latex: '\\xrightarrow[abc]{a}', insertText: '\\xrightarrow[abc]{a}' }
+    ]
+  },
+  "limit": {
+    icon: '\\begin{matrix}\\lim_{x\\to0}&\\lg_{a}{b}\\\\\\sup t&\\ker\\phi\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\lim a', insertText: '\\lim' },
+      { latex: '\\lim_{x\\to0}', insertText: '\\lim_{}' },
+      { latex: '\\max_{a}b', insertText: '\\max_{}' },
+      { latex: '\\min_{a}b', insertText: '\\min_{}' },
+      //part2
+      { latex: '\\log_{a}{b}', insertText: '\\log_{}{}' },
+      { latex: '\\lg_{a}{b}', insertText: '\\lg_{}{}' },
+      { latex: '\\ln_{a}{b}', insertText: '\\ln_{}{}' },
+      { latex: '\\exp a', insertText: '\\exp' },
+      //part3
+      { latex: '\\sup t', insertText: '\\sup' },
+      { latex: '\\inf s', insertText: '\\inf' },
+      { latex: '\\lim u', insertText: '\\lim' },
+      { latex: '\\limsup w', insertText: '\\limsup' },
+      { latex: '\\liminf v', insertText: '\\liminf' },
+      { latex: '\\dim p', insertText: '\\dim' },
+      { latex: '\\ker\\phi', insertText: '\\ker' }
+    ]
+  },
+  "sin": {
+    icon: '\\begin{matrix}\\sin&\\sin^{-1}\\\\\\sinh&\\sinh^{-1}\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\sin\\alpha', insertText: '\\sin' },
+      { latex: '\\cos\\alpha', insertText: '\\cos' },
+      { latex: '\\tan\\alpha', insertText: '\\tan' },
+      { latex: '\\cot\\alpha', insertText: '\\cot' },
+      { latex: '\\sec\\alpha', insertText: '\\sec' },
+      { latex: '\\csc\\alpha', insertText: '\\csc' },
+      //part2
+      { latex: '\\sin^{-1}\\alpha', insertText: '\\sin^{-1}' },
+      { latex: '\\cos^{-1}\\alpha', insertText: '\\cos^{-1}' },
+      { latex: '\\tan^{-1}\\alpha', insertText: '\\tan^{-1}' },
+      { latex: '\\cot^{-1}\\alpha', insertText: '\\cot^{-1}' },
+      { latex: '\\sec^{-1}\\alpha', insertText: '\\sec^{-1}' },
+      { latex: '\\csc^{-1}\\alpha', insertText: '\\csc^{-1}' },
+      { latex: '\\arcsin\\alpha', insertText: '\\arcsin' },
+      { latex: '\\arccos\\alpha', insertText: '\\arccos' },
+      { latex: '\\arctan\\alpha', insertText: '\\arctan' },
+      { latex: '\\operatorname{arccot}\\alpha', insertText: '\\operatorname{arccot}' },
+      { latex: '\\operatorname{arcsec}\\alpha', insertText: '\\operatorname{arcsec}' },
+      { latex: '\\operatorname{arccos}\\alpha', insertText: '\\operatorname{arccos}' },
+      //part3
+      { latex: '\\sinh\\alpha', insertText: '\\sinh' },
+      { latex: '\\cosh\\alpha', insertText: '\\cosh' },
+      { latex: '\\tanh\\alpha', insertText: '\\tanh' },
+      { latex: '\\coth\\alpha', insertText: '\\coth' },
+      { latex: '\\operatorname{sech}\\alpha', insertText: '\\operatorname{sech}' },
+      { latex: '\\operatorname{csch}\\alpha', insertText: '\\operatorname{csch}' },
+      //part4
+      { latex: '\\sinh^{-1}\\alpha', insertText: '\\sinh^{-1}' },
+      { latex: '\\cosh^{-1}\\alpha', insertText: '\\cosh^{-1}' },
+      { latex: '\\tanh^{-1}\\alpha', insertText: '\\tanh^{-1}' },
+      { latex: '\\coth^{-1}\\alpha', insertText: '\\coth^{-1}' },
+      { latex: '\\operatorname{sech}^{-1}\\alpha', insertText: '\\operatorname{sech}^{-1}' },
+      { latex: '\\operatorname{csch}^{-1}\\alpha', insertText: '\\operatorname{csch}^{-1}' }
+    ]
+  },
+  "integrate": {
+    icon: '\\begin{matrix}\\int&\\iint\\\\\\iiint&\\oint\\end{matrix}',
+    formulas: [
+      { latex: '\\int', insertText: '\\int' },
+      { latex: '\\int_{a}^{b}', insertText: '\\int_{}^{}' },
+      { latex: '\\int\\limits_{a}^{b}', insertText: '\\int\\limits_{}^{}' },
+      { latex: '\\iint', insertText: '\\iint' },
+      { latex: '\\iint_{a}^{b}', insertText: '\\iint_{}^{}' },
+      { latex: '\\iint\\limits_{a}^{b}', insertText: '\\iint\\limits_{}^{}' },
+      { latex: '\\iiint', insertText: '\\iiint' },
+      { latex: '\\iiint_{a}^{b}', insertText: '\\iiint_{}^{}' },
+      { latex: '\\iiint\\limits_{a}^{b}', insertText: '\\iiint\\limits_{}^{}' },
+      { latex: '\\oint', insertText: '\\oint' },
+      { latex: '\\oint_{C}^{}', insertText: '\\oint_{}^{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}\\nolimits_{C}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}\\nolimits_{C}{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}\\limits_{C}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int}\\mkern-21mu\\bigcirc}\\limits_{C}{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}\\nolimits_{C}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}\\nolimits_{C}{}' },
+      { latex: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}\\limits_{C}{}', insertText: '\\mathop{{\\int\\!\\!\\!\\!\\int\\!\\!\\!\\!\\int}\\mkern-32.4mu\\bigodot}\\limits_{C}{}' }
+    ]
+  },
+  "summation": {
+    icon: '\\begin{matrix}\\sum&\\prod\\\\\\bigcap&\\bigvee\\end{matrix}',
+    formulas: [
+      { latex: '\\sum', insertText: '\\sum' },
+      { latex: '\\sum_{a}^{b}', insertText: '\\sum_{}^{}' },
+      { latex: '{\\textstyle\\sum_{a}^{b}}', insertText: '{\\textstyle\\sum_{}^{}}' },
+      { latex: '\\prod', insertText: '\\prod' },
+      { latex: '\\prod_{a}^{b}', insertText: '\\prod_{}^{}' },
+      { latex: '{\\textstyle\\prod_{a}^{b}}', insertText: '{\\textstyle\\prod_{}^{}}' },
+      { latex: '\\coprod', insertText: '\\coprod' },
+      { latex: '\\coprod_{a}^{b}', insertText: '\\coprod_{}^{}' },
+      { latex: '{\\textstyle\\coprod_{a}^{b}}', insertText: '{\\textstyle\\coprod_{}^{}}' },
+      { latex: '\\bigcup', insertText: '\\bigcup' },
+      { latex: '\\bigcup_{a}^{b}', insertText: '\\bigcup_{}^{}' },
+      { latex: '{\\textstyle\\bigcup_{a}^{b}}', insertText: '{\\textstyle\\bigcup_{}^{}}' },
+      { latex: '\\bigcap', insertText: '\\bigcap' },
+      { latex: '\\bigcap_{a}^{b}', insertText: '\\bigcap_{}^{}' },
+      { latex: '{\\textstyle\\bigcap_{a}^{b}}', insertText: '{\\textstyle\\bigcap_{}^{}}' },
+      { latex: '\\bigvee', insertText: '\\bigvee' },
+      { latex: '\\bigvee_{a}^{b}', insertText: '\\bigvee_{}^{}' },
+      { latex: '{\\textstyle\\bigvee_{a}^{b}}', insertText: '{\\textstyle\\bigvee_{}^{}}' },
+      { latex: '\\bigwedge', insertText: '\\bigwedge' },
+      { latex: '\\bigwedge_{a}^{b}', insertText: '\\bigwedge_{}^{}' },
+      { latex: '{\\textstyle\\bigwedge_{a}^{b}}', insertText: '{\\textstyle\\bigwedge_{}^{}}' }
+    ]
+  },
+  "braket": {
+    icon: '\\begin{matrix}\\left(\\right)&\\left[0,1\\right)\\\\\\left\\langle\\psi|\\psi\\right\\rangle&\\begin{matrix}a&b\\\\c&d\\end{matrix}\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\left(\\right)', insertText: '\\left(\\right)' },
+      { latex: '\\left[\\right]', insertText: '\\left[\\right]' },
+      { latex: '\\left\\langle\\right\\rangle', insertText: '\\left\\langle\\right\\rangle' },
+      { latex: '\\left\\{\\right\\}', insertText: '\\left\\{\\right\\}' },
+      { latex: '\\left|\\right|', insertText: '\\left|\\right|' },
+      { latex: '\\left\\|\\right\\|', insertText: '\\left\\|\\right\\|' },
+      { latex: '\\left\\lfloor\\right\\rfloor', insertText: '\\left\\lfloor\\right\\rfloor' },
+      { latex: '\\left\\lceil\\right\\rceil', insertText: '\\left\\lceil\\right\\rceil' },
+      { latex: '\\binom{n}{r}', insertText: '\\binom{}{}' },
+      { latex: '\\left[0,1\\right)', insertText: '\\left[0,1\\right)' },
+      { latex: '\\left\\langle\\psi\\right|', insertText: '\\left\\langle\\psi\\right|' },
+      { latex: '\\left|\\psi\\right\\rangle', insertText: '\\left|\\psi\\right\\rangle' },
+      { latex: '\\left\\langle\\psi|\\psi\\right\\rangle', insertText: '\\left\\langle\\psi|\\psi\\right\\rangle' },
+      //part2
+      { latex: '\\begin{matrix}a&b\\\\c&d\\end{matrix}', insertText: '\\begin{matrix}&\\\\&\\end{matrix}' },
+      { latex: '\\begin{smallmatrix}a&b\\\\c&d\\end{smallmatrix}', insertText: '\\begin{smallmatrix}&\\\\&\\end{smallmatrix}' },
+      { latex: '\\begin{bmatrix}a&b\\\\c&d\\end{bmatrix}', insertText: '\\begin{bmatrix}&\\\\&\\end{bmatrix}' },
+      { latex: '\\begin{pmatrix}a&b\\\\c&d\\end{pmatrix}', insertText: '\\begin{pmatrix}&\\\\&\\end{pmatrix}' },
+      { latex: '\\begin{vmatrix}a&b\\\\c&d\\end{vmatrix}', insertText: '\\begin{vmatrix}&\\\\&\\end{vmatrix}' },
+      { latex: '\\begin{Vmatrix}a&b\\\\c&d\\end{Vmatrix}', insertText: '\\begin{Vmatrix}&\\\\&\\end{Vmatrix}' },
+      { latex: '\\begin{Bmatrix}a&b\\\\c&d\\end{Bmatrix}', insertText: '\\begin{Bmatrix}&\\\\&\\end{Bmatrix}' },
+      { latex: '\\left\\{\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right.', insertText: '\\left\\{\\begin{matrix}&\\\\&\\end{matrix}\\right.' },
+      { latex: '\\left.\\begin{matrix}a&b\\\\c&d\\end{matrix}\\right\\}', insertText: '\\left.\\begin{matrix}&\\\\&\\end{matrix}\\right\\}' },
+      { latex: '\\begin{cases}&\\text{if}x=\\\\&\\text{if}x=\\end{cases}', insertText: '\\begin{cases}&\\text{if}x=\\\\&\\text{if}x=\\end{cases}' },
+    ]
+  },
+  "format": {
+    icon: '\\begin{matrix}\\mathrm{ABC}&\\text{ABC}\\\\\\LARGE{a}&\\color{Blue}{text}\\end{matrix}',
+    formulas: [
+      //part1
+      { latex: '\\mathrm{MATHrm}', insertText: '\\mathrm{}' },
+      { latex: '\\mathbf{MATHbf}', insertText: '\\mathbf{}' },
+      { latex: '\\boldsymbol{BoldSymbol}', insertText: '\\boldsymbol{}' },
+      { latex: '\\mathit{MATHit}', insertText: '\\mathit{}' },
+      { latex: '\\mathsf{MATHsf}', insertText: '\\mathsf{}' },
+      { latex: '\\mathbb{MATHbb}', insertText: '\\mathbb{}' },
+      { latex: '\\mathcal{MATHcal}', insertText: '\\mathcal{}' },
+      { latex: '\\mathfrak{MATHfrak}', insertText: '\\mathfrak{}' },
+      //part2
+      { latex: '\\text{Text}', insertText: '\\text{}' },
+      { latex: '\\textit{TEXTit}', insertText: '\\textit{}' },
+      { latex: '\\textbf{TEXTbf}', insertText: '\\textbf{}' },
+      { latex: '\\textsf{TEXTsf}', insertText: '\\textsf{}' },
+      { latex: '\\texttt{TEXTtt}', insertText: '\\texttt{}' },
+      { latex: '\\textrm{TEXTrm}', insertText: '\\textrm{}' },
+      { latex: '\\textup{TEXTup}', insertText: '\\textup{}' },
+      //part3
+      { latex: '\\tiny{a}', insertText: '\\tiny{}' },
+      { latex: '\\scriptsize{a}', insertText: '\\scriptsize{}' },
+      { latex: '\\small{a}', insertText: '\\small{}' },
+      { latex: '\\normalsize{a}', insertText: '\\normalsize{}' },
+      { latex: '\\large{a}', insertText: '\\large{}' },
+      { latex: '\\Large{a}', insertText: '\\Large{}' },
+      { latex: '\\LARGE{a}', insertText: '\\LARGE{}' },
+      { latex: '\\huge{a}', insertText: '\\huge{}' },
+      { latex: '\\Huge{a}', insertText: '\\Huge{}' },
+      //part4
+      { latex: '{\\color{blue}text}', insertText: '{\\color{blue}}' },
+      { latex: '{\\color{brown}text}', insertText: '{\\color{brown}}' },
+      { latex: '{\\color{gray}text}', insertText: '{\\color{gray}}' },
+      { latex: '{\\color{green}text}', insertText: '{\\color{green}}' },
+      { latex: '{\\color{orange}text}', insertText: '{\\color{orange}}' },
+      { latex: '{\\color{peach}text}', insertText: '{\\color{peach}}' },
+      { latex: '{\\color{purple}text}', insertText: '{\\color{purple}}' },
+      { latex: '{\\color{red}text}', insertText: '{\\color{red}}' },
+      { latex: '{\\color{tan}text}', insertText: '{\\color{tan}}' },
+      { latex: '{\\color{violet}text}', insertText: '{\\color{violet}}' },
+      { latex: '{\\color{yellow}text}', insertText: '{\\color{yellow}}' },
+      { latex: '{{\\color{red}R}{\\color{green}G}{\\color{blue}B}}', insertText: '{\\color[RGB]{135,206,235}}' }
+    ]
+  },
+  "struct": {
+    icon: '\\begin{matrix}a\\quad b&a\\ b\\\\\\text{newline}&\\text{array}\\end{matrix}',
+    formulas: [
+      { latex: 'a\\qquad b', insertText: '\\qquad' },
+      { latex: 'a\\quad b', insertText: '\\quad' },
+      { latex: 'a\\ b', insertText: '\\ ' },
+      { latex: 'a\\;b', insertText: '\\;' },
+      { latex: 'a\\!b', insertText: '\\!' },
+      { latex: 'A\\hspace{-0.1cm}{bc}', insertText: '\\hspace{-0.1cm}{}' },
+      { latex: 'A\\kern{-0.1cm}{bc}', insertText: '\\kern{-0.1cm}{}' },
+      { latex: 'A\\raise{3pt}{A}', insertText: '\\raise{3pt}{}' },
+      { latex: 'A\\lower{3pt}{A}', insertText: '\\lower{3pt}{}' },
+      { latex: '\\rule{1pt}{10pt}', insertText: '\\rule{1pt}{10pt}' },
+      { latex: '\\text{mathstrut}', insertText: '\\mathstrut' },
+      { latex: '\\text{vphantom}', insertText: '\\vphantom{}' },
+      { latex: '\\text{hphantom}', insertText: '\\hphantom{}' },
+      { latex: '\\text{phantom}', insertText: '\\phantom{}' },
+      { latex: '\\text{smash}', insertText: '\\smash{}' },
+      { latex: '\\text{newline}', insertText: '\\\\' },
+      { latex: '\\text{align}', insertText: '\\begin{align}a&=b+c\\\\d&=e+f\\end{align}' },
+      { latex: '\\text{align*}', insertText: '\\begin{align*}a&=b+c\\\\d&=e+f\\end{align*}' },
+      { latex: '\\text{eqnarray}', insertText: '\\begin{eqnarray}a&=&b+c\\\\d&=&e+f\\end{eqnarray}' },
+      { latex: '\\text{eqnarray*}', insertText: '\\begin{eqnarray*}a&=&b+c\\\\d&=&e+f\\end{eqnarray*}' },
+      { latex: '\\text{array}', insertText: '\\begin{array}{c|c}a&b\\\\c&d\\end{array}' }
+    ]
+  }
+};
+
+
+function renderFormula(latex, container) {
+  const selectedEngine = document.getElementById('btnEngineSelect').value;
+  if (selectedEngine === 'katex-inline') {
+    katex.render(latex, container, { throwOnError: false, displayMode: false });
+  } else if (selectedEngine === 'katex-display') {
+    katex.render(latex, container, { throwOnError: false, displayMode: true });
+  } else if (selectedEngine === 'mathjax-inline') {
+    container.innerHTML = `$${latex}$`;  // Process with MathJax
+    MathJax.typesetPromise([container]); 
+  }else if (selectedEngine === 'mathjax-display') {
+    container.innerHTML = `$$${latex}$$`;  // Process with MathJax
+    MathJax.typesetPromise([container]); 
+  }
+}
+
+
+// Render group buttons and floating menu (only after Engines are fully loaded)
+function initUI() {
+  const templateGroupButtons = document.getElementById('templateGroupButtons');
+  const groupButtons = document.getElementById('groupButtons');
+  const commonButtons = document.getElementById('commonButtons');
+  const popupMenu = document.getElementById('popupMenu');
+
+  templateGroupButtons.innerHTML = '';
+  groupButtons.innerHTML = '';
+  commonButtons.innerHTML = '';
+  popupMenu.innerHTML = '';
+
+  let currentAnchorButton = null; // Track which button the popup belongs to
+  let popupHideTimer = null;
+
+  function showPopup(key, anchorButton, isTemplate = false) {
+    popupMenu.innerHTML = '';
+    const list = isTemplate ? templates[key].formulas : groups[key].formulas;
+
+    list.forEach(item => {
+      const btn = document.createElement('button');
+
+      if (isTemplate) {
+        btn.style.padding = '10px';
+        btn.style.minWidth = '50px';
+        btn.style.minHeight = '50px';
+      } else {
+        btn.style.padding = '1px';
+        btn.style.minWidth = '20px';
+        btn.style.minHeight = '30px';
+      }
+
+      btn.style.display = 'flex';
+      btn.style.alignItems = 'center';
+      btn.style.justifyContent = 'center';
+
+      const formulaContainer = document.createElement('div');
+      btn.appendChild(formulaContainer);
+      renderFormula(item.latex, formulaContainer);
+
+      btn.addEventListener('click', () => {
+        insertAtCursor(item.insertText);
+        hidePopup();
+      });
+
+      popupMenu.appendChild(btn);
+    });
+
+    const rect = anchorButton.getBoundingClientRect();
+    popupMenu.style.left = rect.left + 'px';
+    popupMenu.style.top = (rect.bottom + window.scrollY) + 'px';
+    popupMenu.style.display = 'flex';
+
+    currentAnchorButton = anchorButton; // Store the currently associated button
+  }
+
+  function hidePopup() {
+    popupMenu.style.display = 'none';
+    currentAnchorButton = null;
+  }
+
+  function cancelHide() {
+    if (popupHideTimer) {
+      clearTimeout(popupHideTimer);
+      popupHideTimer = null;
+    }
+  }
+
+  function delayedHide() {
+    cancelHide();
+    popupHideTimer = setTimeout(() => {
+      hidePopup();
+    }, 300);
+  }
+
+  // Add hover detection for the popup itself
+  popupMenu.addEventListener('mouseenter', cancelHide);
+  popupMenu.addEventListener('mouseleave', delayedHide);
+
+  // Render Template Buttons
+  for (const templateKey in templates) {
+    const template = templates[templateKey];
+    const btn = document.createElement('button');
+    btn.style.padding = '5px';
+    btn.style.minWidth = '20px';
+    btn.style.minHeight = '20px';
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+    btn.style.position = 'relative';
+    btn.dataset.templateKey = templateKey;
+
+    const formulaContainer = document.createElement('div');
+    btn.appendChild(formulaContainer);
+    renderFormula(template.icon, formulaContainer);
+
+    templateGroupButtons.appendChild(btn);
+
+    // Bind event handlers upfront (not inside showPopup)!
+    btn.addEventListener('mouseenter', () => {
+      cancelHide();
+      showPopup(templateKey, btn, true);
+    });
+    btn.addEventListener('mouseleave', delayedHide);
+  }
+
+  // Render Group Buttons
+  for (const groupKey in groups) {
+    const group = groups[groupKey];
+    const btn = document.createElement('button');
+    btn.style.padding = '5px';
+    btn.style.minWidth = '20px';
+    btn.style.minHeight = '20px';
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+    btn.style.position = 'relative';
+    btn.dataset.groupKey = groupKey;
+
+    const formulaContainer = document.createElement('div');
+    btn.appendChild(formulaContainer);
+    renderFormula(group.icon, formulaContainer);
+
+    groupButtons.appendChild(btn);
+
+    btn.addEventListener('mouseenter', () => {
+      cancelHide();
+      showPopup(groupKey, btn, false);
+    });
+    btn.addEventListener('mouseleave', delayedHide);
+  }
+
+  // Render Common Buttons (no popup logic needed)
+  const commons = [
+    { latex: '\\text{Inline}', insertText: '{\\textstyle{}}'},
+    { latex: '\\text{Display}', insertText: '{\\displaystyle{}}'},
+    { latex: '\\text{newline}', insertText: '\\\\'},
+    { latex: '\\overrightarrow{ABC}', insertText: '\\overrightarrow{}'},
+    { latex: '\\overline{ABC}', insertText: '\\overline{}'},
+    { latex: '\\underline{ABC}', insertText: '\\underline{}'},
+    { latex: '\\vec{a}', insertText: '\\vec{}'},
+    { latex: '\\hat{a}', insertText: '\\hat{}'},
+    { latex: '\\bar{a}', insertText: '\\bar{}'},
+    { latex: 'p\\mkern-9.5mu/', insertText: 'p\\mkern-9.5mu/'},
+    { latex: '\\partial', insertText: '\\partial'},
+    { latex: '\\mathrm{d}', insertText: '\\mathrm{d}', scale: 1.0},
+    { latex: '\\mathrm{MATHrm}', insertText: '\\mathrm{}'},
+    { latex: '\\mathbf{MATHbf}', insertText: '\\mathbf{}'},
+    { latex: '\\boldsymbol{BoldSymbol}', insertText: '\\boldsymbol{}'},
+    { latex: '\\mathit{MATHit}', insertText: '\\mathit{}'},
+    { latex: '\\mathbb{MATHbb}', insertText: '\\mathbb{}'},
+    { latex: '\\mathcal{MATHcal}', insertText: '\\mathcal{}'},
+    { latex: '\\text{Text}', insertText: '\\text{}'},
+    { latex: '\\left(\\right)', insertText: '\\left(\\right)'},
+    { latex: '\\left[\\right]', insertText: '\\left[\\right]'},
+    { latex: '\\left\\langle\\right\\rangle', insertText: '\\left\\langle\\right\\rangle'},
+    { latex: '\\left\\{\\right\\}', insertText: '\\left\\{\\right\\}'},
+    { latex: '\\left|\\right|', insertText: '\\left|\\right|'},
+    { latex: '\\left\\|\\right\\|', insertText: '\\left\\|\\right\\|'},
+    { latex: '\\pm', insertText: '\\pm'},
+    { latex: '\\pi', insertText: '\\pi'},
+    { latex: '\\mathrm{e}', insertText: '\\mathrm{e}'},
+    { latex: '\\theta', insertText: '\\theta'},
+    { latex: '\\delta', insertText: '\\delta'},
+    { latex: '\\infty', insertText: '\\infty'},
+    { latex: '\\in', insertText: '\\in'},
+    { latex: '\\to', insertText: '\\to'},
+    { latex: '\\frac{a}{b}', insertText: '\\frac{}{}'},
+    { latex: '\\left\\langle\\psi\\right|', insertText: '\\left\\langle\\psi\\right|'},
+    { latex: '\\left|\\psi\\right\\rangle', insertText: '\\left|\\psi\\right\\rangle'},
+    { latex: '\\left\\langle\\psi|\\psi\\right\\rangle', insertText: '\\left\\langle\\psi|\\psi\\right\\rangle'}
+  ];
+
+  commons.forEach(c => {
+    const btn = document.createElement('button');
+    btn.style.padding = '5px';
+    btn.style.minWidth = '30px';
+    btn.style.minHeight = '30px';
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';
+    btn.style.justifyContent = 'center';
+    btn.style.position = 'relative';
+    btn.style.overflow = 'hidden';
+
+    const formulaContainer = document.createElement('div');
+    btn.appendChild(formulaContainer);
+    renderFormula(c.latex, formulaContainer);
+
+    if (c.scale) {
+      formulaContainer.style.transform = `scale(${c.scale})`;
+      formulaContainer.style.transformOrigin = 'center center';
+    }
+
+    btn.addEventListener('click', () => {
+      insertAtCursor(c.insertText);
+    });
+
+    commonButtons.appendChild(btn);
+  });
+}
+
+
+// Bind input field and dropdown menus
+function initRender() {
+  const input = document.getElementById('latexInput');
+  const output = document.getElementById('output');
+  const engineSelect = document.getElementById('engineSelect');
+
+  function render() {
+    const engine = engineSelect.value;
+    const latex = input.value;
+
+    if (engine === 'katex-inline') {
+      try {
+        katex.render(latex, output, { throwOnError: false, displayMode: false });
+      } catch (e) {
+        output.innerHTML = '<span style="color: red;">Invalid LaTeX!</span>';
+      }
+    } else if (engine === 'katex-display') {
+      try {
+        katex.render(latex, output, { throwOnError: false, displayMode: true });
+      } catch (e) {
+        output.innerHTML = '<span style="color: red;">Invalid LaTeX!</span>';
+      }
+    } else if (engine === 'mathjax-inline') {
+      if (latex === '') {
+        output.innerHTML = '';
+      } else {
+        output.innerHTML = `$${latex}$`;
+      }
+      MathJax.typesetPromise([output]);
+    } else if (engine === 'mathjax-display') {
+      output.innerHTML = `$$${latex}$$`;
+      MathJax.typesetPromise([output]);
+    }
+  }
+
+  function insertAtCursor(text) {
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    const value = input.value;
+    input.value = value.substring(0, start) + text + value.substring(end);
+    input.selectionStart = input.selectionEnd = start + text.length;
+    input.focus();
+    render();
+  }
+
+  window.insertAtCursor = insertAtCursor; // Expose insertAtCursor for popup usage
+
+  input.addEventListener('input', render);
+  engineSelect.addEventListener('change', render);
+  btnEngineSelect.addEventListener('change', initUI);
+
+  render(); // Perform an initial render on page load
+}
+
+// Wait for the entire page (including KaTeX) to fully load
+window.addEventListener('load', () => {
+  initUI();
+  initRender();
+});
+</script>
+
+</body>
+</html>
