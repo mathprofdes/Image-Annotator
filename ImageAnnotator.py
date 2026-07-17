@@ -783,7 +783,7 @@ class TextBoxOptions(QWidget):
         fontButton = QPushButton('Edit Font')
         fontButton.clicked.connect(self.editFont)
 
-        self.textColor = ColorSelectButtonBox()
+        self.textColor = ColorSelectButtonBox(Parent=self)
         self.textColor.colorChange.connect(self.objChanged)
         self.textColor.setMaximumWidth(50)
 
@@ -827,12 +827,12 @@ class TextBoxOptions(QWidget):
         self.includeBox = QCheckBox()
         self.includeBox.clicked.connect(self.objChanged)
 
-        self.backgroundColor = ColorSelectButtonBox()
+        self.backgroundColor = ColorSelectButtonBox(Parent=self)
         self.backgroundColor.colorChange.connect(self.objChanged)
         self.backgroundColor.setMaximumWidth(50)
         self.backgroundColor.setColor(QColor(255,255,255))
 
-        self.borderColor = ColorSelectButtonBox()
+        self.borderColor = ColorSelectButtonBox(Parent=self)
         self.borderColor.colorChange.connect(self.objChanged)
         self.borderColor.setMaximumWidth(50)
 
@@ -1252,7 +1252,7 @@ class ImageOptions(QWidget):
         self.useTransColor = QCheckBox()
         self.useTransColor.clicked.connect(self.objChanged)
 
-        self.transColor = ColorSelectButtonBox()
+        self.transColor = ColorSelectButtonBox(Parent=self)
         self.transColor.colorChange.connect(self.objChanged)
         self.transColor.setMaximumWidth(50)
         self.transColor.setColor(QColor(255, 255, 255))
@@ -1285,12 +1285,12 @@ class ImageOptions(QWidget):
         self.includeBox = QCheckBox()
         self.includeBox.clicked.connect(self.objChanged)
 
-        self.backgroundColor = ColorSelectButtonBox()
+        self.backgroundColor = ColorSelectButtonBox(Parent=self)
         self.backgroundColor.colorChange.connect(self.objChanged)
         self.backgroundColor.setMaximumWidth(50)
         self.backgroundColor.setColor(QColor(255,255,255))
 
-        self.borderColor = ColorSelectButtonBox()
+        self.borderColor = ColorSelectButtonBox(Parent=self)
         self.borderColor.colorChange.connect(self.objChanged)
         self.borderColor.setMaximumWidth(50)
 
@@ -1719,7 +1719,7 @@ class LineOptions(QWidget):
         self.linewidth.setMaximumWidth(100)
         self.linewidth.valueChanged.connect(self.objChanged)
 
-        self.lineColor = ColorSelectButtonBox()
+        self.lineColor = ColorSelectButtonBox(Parent=self)
         self.lineColor.colorChange.connect(self.objChanged)
         self.lineColor.setMaximumWidth(50)
 
@@ -1881,7 +1881,7 @@ class ArrowOptions(QWidget):
         self.arrowAngle.setMaximumWidth(100)
         self.arrowAngle.valueChanged.connect(self.objChanged)
 
-        self.lineColor = ColorSelectButtonBox()
+        self.lineColor = ColorSelectButtonBox(Parent=self)
         self.lineColor.colorChange.connect(self.objChanged)
         self.lineColor.setMaximumWidth(50)
 
@@ -2034,7 +2034,7 @@ class RectangleOptions(QWidget):
         self.fillRect = QCheckBox()
         self.fillRect.clicked.connect(self.objChanged)
 
-        self.fillColor = ColorSelectButtonBox()
+        self.fillColor = ColorSelectButtonBox(Parent=self)
         self.fillColor.colorChange.connect(self.objChanged)
         self.fillColor.setMaximumWidth(50)
 
@@ -2054,7 +2054,7 @@ class RectangleOptions(QWidget):
         self.cornerRad.setMaximumWidth(100)
         self.cornerRad.valueChanged.connect(self.objChanged)
 
-        self.lineColor = ColorSelectButtonBox()
+        self.lineColor = ColorSelectButtonBox(Parent=self)
         self.lineColor.colorChange.connect(self.objChanged)
         self.lineColor.setMaximumWidth(50)
 
@@ -2213,7 +2213,7 @@ class EllipseOptions(QWidget):
         self.fillRect = QCheckBox()
         self.fillRect.clicked.connect(self.objChanged)
 
-        self.fillColor = ColorSelectButtonBox()
+        self.fillColor = ColorSelectButtonBox(Parent=self)
         self.fillColor.colorChange.connect(self.objChanged)
         self.fillColor.setMaximumWidth(50)
 
@@ -2233,7 +2233,7 @@ class EllipseOptions(QWidget):
         self.cornerRad.setMaximumWidth(100)
         self.cornerRad.valueChanged.connect(self.objChanged)
 
-        self.lineColor = ColorSelectButtonBox()
+        self.lineColor = ColorSelectButtonBox(Parent=self)
         self.lineColor.colorChange.connect(self.objChanged)
         self.lineColor.setMaximumWidth(50)
 
